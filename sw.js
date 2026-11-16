@@ -1,6 +1,6 @@
 // Guarda la "carcasa" de la app para que abra al instante; los datos siempre se piden a la hoja.
-const CACHE = 'incidencias-v7';
-const ARCHIVOS = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './fotos/equipo.jpg'];
+const CACHE = 'incidencias-v8';
+const ARCHIVOS = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './fotos/equipo.jpg', './fotos/equipo-movil.jpg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))));

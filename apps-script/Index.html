@@ -28,7 +28,11 @@ button{cursor:pointer;border:0;background:none}
 /* ---------- login */
 #login{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:32px 24px calc(32px + env(safe-area-inset-bottom));
   background:linear-gradient(160deg,var(--rojo) 0%,#7d0b15 100%);color:#fff}
-#login{background:linear-gradient(180deg,rgba(179,18,31,0) 0,rgba(179,18,31,0) calc(50.5vw - 90px),var(--rojo) calc(50.5vw + 2px),#7d0b15 100%),url(fotos/equipo.jpg) top center/100% auto no-repeat,var(--rojo);justify-content:flex-end}
+#login{background:linear-gradient(180deg,var(--rojo) 0%,var(--rojo) 45%,#7d0b15 100%);justify-content:flex-start;padding-top:0}
+.portada{position:relative;margin:0 -24px 26px;padding-top:env(safe-area-inset-top);background:#7d0b15}
+.portada img{display:block;width:100%;height:auto}
+.portada::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:45%;background:linear-gradient(180deg,rgba(179,18,31,0),var(--rojo))}
+#login .relleno{flex:1}
 #login .marca{font-weight:800;letter-spacing:.08em;font-size:13px;opacity:.85;text-transform:uppercase}
 #login h1{font-size:34px;line-height:1.1;margin:8px 0 6px}
 #login p{opacity:.85;margin:0 0 28px}
@@ -170,6 +174,7 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 #fondoFicha{position:fixed;inset:0;z-index:19;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:opacity .25s}
 /* ---------- ordenador / tablet */
 @media (min-width:900px){
+  .portada,#login .relleno{display:none}
   #login{align-items:flex-end;justify-content:center;padding-right:7vw;background:linear-gradient(90deg,rgba(179,18,31,0) 0,rgba(179,18,31,0) 48%,var(--rojo) 56%),url(fotos/equipo.jpg) left center/56% auto no-repeat,linear-gradient(160deg,var(--rojo),#7d0b15)}
   #login>*{width:100%;max-width:440px}
   header{padding-left:32px;padding-right:32px}
@@ -202,6 +207,8 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 
 <!-- ======================= LOGIN ======================= -->
 <section id="login">
+  <div class="portada"><picture><source media="(min-width:900px)" srcset="fotos/equipo.jpg"><img src="fotos/equipo-movil.jpg" alt="Responsables de la Escuela"></picture></div>
+  <div class="relleno"></div>
   <div class="marca">Fundación · Escuela 26-27</div>
   <h1>Registro de incidencias</h1>
   <p>Apunta los viajes, ausencias y sustituciones de tus monitores desde el móvil.</p>
