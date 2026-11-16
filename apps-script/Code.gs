@@ -17,9 +17,12 @@
  */
 
 /* ================================================================
- * PEGA AQUÍ la URL de la hoja compartida del registro (la que usan
- * los responsables). Este script debe vivir en OTRA hoja privada
- * (solo tuya), donde quedan los códigos y la configuración.
+ * URL DE LA EXCEL DEL REGISTRO
+ * - Si has abierto este código desde la Excel (Extensiones → Apps Script),
+ *   déjalo vacío: ''.
+ * - Si el código está en un proyecto aparte, pega aquí la dirección de la
+ *   Excel, por ejemplo:
+ *   'https://docs.google.com/spreadsheets/d/XXXXXXXX/edit'
  * ================================================================ */
 var URL_HOJA_REGISTRO = '';
 
