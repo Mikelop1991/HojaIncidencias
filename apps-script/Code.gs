@@ -489,6 +489,33 @@ var ACCIONES = {
     };
   },
 
+  /** Resumen de toda la temporada (solo administración). */
+  resumen: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    var c0 = CacheService.getScriptCache(), v = c0.get('resumen');
+    if (v) return JSON.parse(v);
+    var ss = ss_(), out = { meses: [], filas: {}, resp: [], generado: new Date().toISOString() };
+    MESES.forEach(function (mes) {
+      var sh = ss.getSheetByName(mes); if (!sh) return;
+      var c = columnasMes_(sh);
+      out.meses.push(mes);
+      out.filas[mes] = filas_(sh).filter(function (r) { return r[c.grupo] && r[c.nombre]; }).map(function (r) {
+        var viajes = c.dias.reduce(function (a, col) { return a + (num_(r[col]) || 0); }, 0);
+        return [String(r[c.grupo]).trim(), (String(r[c.nombre]).trim() + ' ' + String(r[c.ap1] || '').trim()).trim(),
+          viajes, num_(r[c.ausencias]) || 0, num_(r[c.sust]) || 0, num_(r[c.partidos]) || 0, num_(r[c.km]) || 0, num_(r[c.peajes]) || 0];
+      });
+    });
+    var shR = ss.getSheetByName('Responsables');
+    if (shR) filas_(shR).forEach(function (r) {
+      if (!r[0] || !r[1]) return;
+      var mes = MESES.filter(function (m) { return norm_(m) === norm_(r[0]); })[0];
+      if (mes) out.resp.push([mes, String(r[1]).trim(), num_(r[2]) || 0, num_(r[3]) || 0, num_(r[4]) || 0, num_(r[6]) || 0]);
+    });
+    try { c0.put('resumen', JSON.stringify(out), 120); } catch (e) { }
+    return out;
+  },
+
   /** login + datos del mes en una sola llamada (arranque rápido) */
   inicio: function (p) {
     var l = ACCIONES.login(p);
@@ -531,6 +558,7 @@ var ACCIONES = {
         }
       }
       if (!hecho) shD.appendRow([p.mes, p.grupo, p.key, dias.join(','), ahora, u.persona]);
+      try { CacheService.getScriptCache().remove('resumen'); } catch (e) { }
       log_(u.persona, 'Guardar monitor', p.mes + ' · ' + p.grupo + ' · ' + m.nombre + ' ' + m.ap1 + ' · días ' + dias.join(','));
       return { ok: true, conteo: conteo, actualizado: ahora.toISOString() };
     } finally { lock.releaseLock(); }
@@ -570,6 +598,7 @@ var ACCIONES = {
         sh.getRange(fila, 1, 1, 2).setValues([[p.mes.toUpperCase(), nombre]]);
       }
       sh.getRange(fila, 3, 1, 5).setValues(valores);
+      try { CacheService.getScriptCache().remove('resumen'); } catch (e) { }
       log_(u.persona, 'Guardar mis datos', p.mes + ' · ' + nombre);
       return { ok: true };
     } finally { lock.releaseLock(); }

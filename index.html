@@ -95,8 +95,8 @@ main{padding:14px 14px calc(90px + env(safe-area-inset-bottom));max-width:680px;
 .vacio{text-align:center;color:var(--gris);padding:40px 10px}
 
 /* ---------- ficha */
-#ficha{position:fixed;inset:0;z-index:20;background:var(--fondo);overflow-y:auto;transform:translateY(100%);transition:transform .25s ease;}
-#ficha.abierta{transform:none}
+#ficha{position:fixed;inset:0;z-index:20;background:var(--fondo);overflow-y:auto;transform:translateY(100%);visibility:hidden;transition:transform .25s ease,visibility 0s linear .25s;}
+#ficha.abierta{transform:none;visibility:visible;transition:transform .25s ease}
 .fcab{position:sticky;top:0;z-index:2;background:#fff;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--linea)}
 .fcab .icono{background:var(--fondo);color:var(--tinta)}
 .fcab .t{flex:1;min-width:0}
@@ -187,7 +187,7 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
   .resumen-fila .buscar{margin:0;height:100%}
   .mon:hover{box-shadow:0 0 0 2px var(--azul) inset,var(--sombra)}
   #ficha{left:auto;width:min(900px,70vw);transform:translateX(100%);box-shadow:-10px 0 40px rgba(0,0,0,.2)}
-  #ficha.abierta{transform:none}
+  #ficha.abierta{transform:none;visibility:visible;transition:transform .25s ease}
   #ficha.abierta+#fondoFicha{opacity:1;pointer-events:auto}
   .fcuerpo{max-width:none;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;padding:18px}
   .fcuerpo .tarjeta{margin:0}
@@ -201,6 +201,62 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
   #toast{bottom:28px}
 }
 @media (min-width:900px) and (max-width:1150px){ .fcuerpo{grid-template-columns:1fr} .fcuerpo .tarjeta:first-child{grid-row:auto} }
+
+/* ---------- resumen (administración) */
+.periodos{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px}
+.periodos::-webkit-scrollbar{display:none}
+.per{flex:none;padding:7px 12px;border-radius:999px;background:#fff;border:1.5px solid var(--linea);font-size:13px;font-weight:700;color:var(--tinta)}
+.per.on{background:var(--azul);border-color:var(--azul);color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.kpi{background:#fff;border-radius:14px;padding:12px 14px;box-shadow:var(--sombra);position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--k,var(--azul))}
+.kpi .n{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.kpi .t{font-size:12px;color:var(--gris);font-weight:600;margin-top:2px}
+.kpi .s{font-size:11px;color:var(--gris);margin-top:4px}
+.graf h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.graf h3 small{font-weight:500;color:var(--gris);font-size:12px}
+.leg{display:flex;gap:14px;font-size:12px;color:var(--gris);margin:0 0 8px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.svgw{width:100%;overflow:visible}
+.svgw text{font-family:inherit}
+.svgw [data-tip]{cursor:pointer}
+.svgw [data-tip]:hover{opacity:.85}
+.metricas{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.metricas button{padding:5px 10px;border-radius:8px;background:var(--fondo);font-size:12px;font-weight:700;color:var(--gris)}
+.metricas button.on{background:var(--rojo-suave);color:var(--rojo)}
+.tabla{width:100%;border-collapse:collapse;font-size:13px}
+.tabla th{text-align:right;font-size:11px;color:var(--gris);font-weight:700;padding:6px 6px;border-bottom:1px solid var(--linea);white-space:nowrap}
+.tabla td{text-align:right;padding:8px 6px;border-bottom:1px solid var(--linea);font-variant-numeric:tabular-nums}
+.tabla th:first-child,.tabla td:first-child{text-align:left;white-space:nowrap}
+.tabla tr:last-child td{border-bottom:0}
+.tabla tfoot td{font-weight:800;border-top:2px solid var(--linea)}
+.tscroll{overflow-x:auto}
+.btnpdf{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:14px;background:var(--azul);color:#fff;font-weight:700;margin:4px 0 12px}
+.solo-print{display:none}
+#tip{position:fixed;z-index:60;pointer-events:none;background:var(--tinta);color:#fff;font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;opacity:0;transition:opacity .12s;max-width:240px;line-height:1.35}
+#tip.si{opacity:1}
+@media (min-width:900px){
+  .kpis{grid-template-columns:repeat(6,1fr)}
+  .rejilla{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .rejilla .tarjeta{margin:0}
+  .rejilla .ancha{grid-column:1/-1}
+  .btnpdf{width:auto;padding:11px 18px;margin:0}
+  .cab-res{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+  .cab-res .periodos{margin:0}
+}
+@media print{
+  @page{size:A4;margin:12mm}
+  html,body,#app{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  header,#ficha,#fondoFicha,#menu,#toast,#instalarBanner,.noprint,#tip{display:none!important}
+  main{padding:0!important;max-width:none!important}
+  .solo-print{display:block;border-bottom:3px solid var(--rojo);padding-bottom:8px;margin-bottom:12px}
+  .solo-print h1{margin:0;font-size:20px;color:var(--azul)}
+  .solo-print p{margin:2px 0 0;color:var(--gris);font-size:12px}
+  .tarjeta,.kpi{box-shadow:none!important;border:1px solid var(--linea);break-inside:avoid}
+  .kpis{grid-template-columns:repeat(3,1fr)}
+  .rejilla{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rejilla .ancha{grid-column:1/-1}
+}
 </style>
 </head>
 <body>
@@ -235,6 +291,7 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
     <div class="tabs">
       <button class="tab on" data-tab="monitores">Monitores</button>
       <button class="tab" data-tab="mis" id="tabMis">Mis datos</button>
+      <button class="tab oculto" data-tab="resumen" id="tabRes">Resumen</button>
     </div>
   </header>
   <main id="main"></main>
@@ -261,6 +318,7 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 </div></div>
 
 <div id="toast"></div>
+<div id="tip"></div>
 <div id="instalarBanner" class="oculto">
   <img src="icon-192.png" alt="">
   <div class="tx" id="instTx"></div>
@@ -331,6 +389,7 @@ function mostrarApp() {
   $('#quien').textContent = u.persona;
   const yo = $('#yo'); yo.onerror = () => yo.classList.add('oculto'); yo.onload = () => yo.classList.remove('oculto'); yo.src = fotoDe(u.persona);
   $('#tabMis').classList.toggle('oculto', !u.responsables.length);
+  $('#tabRes').classList.toggle('oculto', !u.admin);
   pintarMeses();
 }
 
@@ -357,7 +416,7 @@ async function entrar(codigo, silencioso) {
     store.set('inc_codigo', S.codigo); guardarCache();
     mostrarApp(); pintar(); marcarSinRed(false);
     enviarCola();
-    precargar();
+    precargar().then(() => { if (S.user.admin) refrescarResumen(); });
   } catch (e) {
     if (e.red && S.user) { marcarSinRed(true); return; }
     S.user = null; $('#app').classList.add('oculto'); $('#login').classList.remove('oculto');
@@ -431,6 +490,8 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
 /* ======================= LISTA DE MONITORES ======================= */
 /** Pinta lo que haya en el móvil y, si hace falta, lo refresca por detrás. */
 function pintar() {
+  $('#meses').classList.toggle('oculto', S.tab === 'resumen');
+  if (S.tab === 'resumen') return pintarResumen();
   if (S.tab === 'mis') return pintarMisDatosDesdeCache();
   const d = S.datos[S.mes];
   if (d) { S.datosMes = vista(d); pintarLista(); }
@@ -442,6 +503,7 @@ async function cargar(forzar) {
   pintar();
   const mes = S.mes, tab = S.tab, d = S.datos[mes];
   if (tab === 'mis') return refrescarMisDatos(forzar);
+  if (tab === 'resumen') return refrescarResumen(forzar);
   if (d && !forzar && Date.now() - d._fresco < 60000) return;     // reciente: no hace falta volver a pedir
   try {
     const nuevo = fusionar(await pedirMes(mes));
@@ -723,6 +785,171 @@ function pintarMisDatos(d) {
     toast('Guardado ✓'); enviarCola();
   };
 }
+
+
+/* ======================= RESUMEN (solo administración) ======================= */
+const C_AUS = '#c8102e', C_SUS = '#2f5aa8';
+const MES_CORTO = {Octubre:'Oct',Noviembre:'Nov',Diciembre:'Dic',Enero:'Ene',Febrero:'Feb',Marzo:'Mar',Abril:'Abr',Mayo:'May',Junio:'Jun'};
+const nf = (n, d=0) => (n||0).toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
+S.periodo = 'Temporada'; S.metricaZona = 'aus';
+
+async function refrescarResumen(forzar) {
+  if (S.resumen && !forzar && Date.now() - S.resumen._fresco < 60000) return;
+  try {
+    const r = await api('resumen'); r._fresco = Date.now(); S.resumen = r;
+    if (S.tab === 'resumen') pintarResumen();
+  } catch (e) {
+    if (S.tab === 'resumen' && !S.resumen) $('#main').innerHTML = `<div class="vacio">${esc(/Acci[oó]n desconocida/.test(e.message) ? 'Actualiza el código de Apps Script para ver el resumen.' : e.message)}</div>`;
+  }
+}
+
+function agregar(R, meses) {
+  const z = {}, mon = {}, t = {viajes:0,aus:0,sust:0,part:0,km:0,peajes:0,monit:0,conInc:0};
+  meses.forEach(m => (R.filas[m]||[]).forEach(([g,n,v,a,su,pa,km,pe]) => {
+    const Z = z[g] || (z[g] = {g,viajes:0,aus:0,sust:0,part:0,km:0,peajes:0,mon:new Set()});
+    Z.viajes+=v; Z.aus+=a; Z.sust+=su; Z.part+=pa; Z.km+=km; Z.peajes+=pe; Z.mon.add(n);
+    const k = g+'|'+n, M = mon[k] || (mon[k] = {g,n,aus:0,sust:0,inc:false});
+    M.aus+=a; M.sust+=su; if (a||su) M.inc = true;
+    t.viajes+=v; t.aus+=a; t.sust+=su; t.part+=pa; t.km+=km; t.peajes+=pe;
+  }));
+  const mons = Object.values(mon); t.monit = mons.length; t.conInc = mons.filter(x=>x.inc).length;
+  return { t, zonas:Object.values(z), mons };
+}
+
+function pintarResumen() {
+  const main = $('#main'), R = S.resumen;
+  if (!R) { main.innerHTML = '<div class="cargando"><div class="spin"></div></div>'; return; }
+  if (!R.meses.length) { main.innerHTML = '<div class="vacio">Aún no hay datos.</div>'; return; }
+  if (S.periodo !== 'Temporada' && !R.meses.includes(S.periodo)) S.periodo = 'Temporada';
+  const sel = S.periodo === 'Temporada' ? R.meses : [S.periodo];
+  const A = agregar(R, sel);
+  const resp = {}; R.resp.filter(r => sel.includes(r[0])).forEach(([m,n,km,pa,su,pe]) => {
+    const x = resp[n] || (resp[n] = {n,km:0,part:0,sust:0,peajes:0}); x.km+=km; x.part+=pa; x.sust+=su; x.peajes+=pe; });
+  const respL = Object.values(resp).sort((a,b)=>b.km-a.km);
+  const tasa = A.t.viajes + A.t.aus ? A.t.aus / (A.t.viajes + A.t.aus) * 100 : 0;
+  const kmResp = respL.reduce((a,x)=>a+x.km,0), peajesResp = respL.reduce((a,x)=>a+x.peajes,0);
+  // por mes (toda la temporada)
+  const porMes = R.meses.map(m => { const x = agregar(R,[m]).t; return { m, aus:x.aus, sust:x.sust }; });
+  // zonas
+  const MET = { aus:['Ausencias',z=>z.aus,0], sust:['Sustituciones',z=>z.sust,0], tasa:['% ausencia',z=>z.viajes+z.aus? z.aus/(z.viajes+z.aus)*100:0,1], km:['Km especiales',z=>z.km,0], peajes:['Peajes €',z=>z.peajes,2] };
+  const [metNom, metFn, metDec] = MET[S.metricaZona];
+  const zonas = A.zonas.map(z => ({ etiqueta:titulo(z.g), valor:metFn(z), tip:`<b>${esc(titulo(z.g))}</b><br>${z.mon.size} monitores · ${nf(z.viajes)} viajes<br>Ausencias ${nf(z.aus)} · Sustituciones ${nf(z.sust)}<br>Km ${nf(z.km)} · Peajes ${nf(z.peajes,2)} €` }))
+    .sort((a,b)=>b.valor-a.valor);
+  const top = A.mons.filter(x=>x.aus>0).sort((a,b)=>b.aus-a.aus || b.sust-a.sust).slice(0,10)
+    .map(x => ({ etiqueta:x.n, sub:titulo(x.g), valor:x.aus, tip:`<b>${esc(x.n)}</b><br>${esc(titulo(x.g))}<br>${x.aus} ausencias · ${x.sust} sustituciones` }));
+  // anchos reales para que los gráficos no se deformen
+  const esc2 = innerWidth >= 900, mw = $('#main').clientWidth - (esc2 ? 64 : 28);
+  S._wAncho = Math.max(280, mw - 32); S._wMitad = Math.max(280, esc2 ? (mw - 14) / 2 - 32 : mw - 32);
+  const nomPer = S.periodo === 'Temporada' ? 'Temporada 2026-27' : `${S.periodo} ${R.meses.indexOf(S.periodo) >= 0 && MESES_NUM[S.periodo] >= 9 ? 2026 : 2027}`;
+
+  main.innerHTML = `
+    <div class="solo-print"><h1>Informe de incidencias · Escuela 26-27</h1><p>${esc(nomPer)} · Generado el ${new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</p></div>
+    <div class="cab-res noprint">
+      <div class="periodos">${['Temporada', ...R.meses].map(m => `<button class="per ${m===S.periodo?'on':''}" data-p="${m}">${m}</button>`).join('')}</div>
+      <button class="btnpdf" id="btnPdf"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>Imprimir / PDF</button>
+    </div>
+    <div class="kpis">
+      ${kpi(nf(A.t.aus),'Ausencias', `${nf(tasa,1)} % de los viajes`, C_AUS)}
+      ${kpi(nf(A.t.sust),'Sustituciones', '', C_SUS)}
+      ${kpi(`${A.t.conInc}<small style="font-size:14px;color:var(--gris)">/${A.t.monit}</small>`,'Monitores con incidencias','', '#16213a')}
+      ${kpi(nf(A.t.part),'Partidos de liga', '', '#16213a')}
+      ${kpi(nf(A.t.km + kmResp),'Km totales', `Monitores ${nf(A.t.km)} · Resp. ${nf(kmResp)}`, '#16213a')}
+      ${kpi(nf(A.t.peajes + peajesResp,2)+' €','Peajes', '', '#16213a')}
+    </div>
+    <div class="rejilla">
+      <div class="tarjeta graf ancha">
+        <h3>Incidencias mes a mes <small>toda la temporada</small></h3>
+        <div class="leg"><span><i style="background:${C_AUS}"></i>Ausencias</span><span><i style="background:${C_SUS}"></i>Sustituciones</span></div>
+        ${columnas(porMes)}
+      </div>
+      <div class="tarjeta graf">
+        <h3>¿Dónde hay más? <small>por zona</small></h3>
+        <div class="metricas noprint">${Object.entries(MET).map(([k,v])=>`<button data-met="${k}" class="${k===S.metricaZona?'on':''}">${v[0]}</button>`).join('')}</div>
+        <p class="ayuda solo-print" style="display:none">${metNom}</p>
+        ${barrasH(zonas, S.metricaZona==='sust'?C_SUS:C_AUS, metDec, S.metricaZona==='tasa'?' %':S.metricaZona==='peajes'?' €':'')}
+      </div>
+      <div class="tarjeta graf">
+        <h3>Más ausencias <small>top 10 monitores</small></h3>
+        ${top.length ? barrasH(top, C_AUS, 0, '') : '<p class="ayuda">Sin ausencias en este periodo.</p>'}
+      </div>
+      <div class="tarjeta ancha">
+        <h3>Detalle por zona</h3>
+        <div class="tscroll"><table class="tabla">
+          <thead><tr><th>Zona</th><th>Monitores</th><th>Viajes</th><th>Ausencias</th><th>% aus.</th><th>Sustit.</th><th>Liga</th><th>Km</th><th>Peajes €</th></tr></thead>
+          <tbody>${A.zonas.sort((a,b)=>b.aus-a.aus).map(z=>`<tr><td>${imgMini(z.g)}${esc(titulo(z.g))}</td><td>${z.mon.size}</td><td>${nf(z.viajes)}</td><td>${nf(z.aus)}</td><td>${nf(z.viajes+z.aus?z.aus/(z.viajes+z.aus)*100:0,1)}</td><td>${nf(z.sust)}</td><td>${nf(z.part)}</td><td>${nf(z.km)}</td><td>${nf(z.peajes,2)}</td></tr>`).join('')}</tbody>
+          <tfoot><tr><td>Total</td><td>${A.t.monit}</td><td>${nf(A.t.viajes)}</td><td>${nf(A.t.aus)}</td><td>${nf(tasa,1)}</td><td>${nf(A.t.sust)}</td><td>${nf(A.t.part)}</td><td>${nf(A.t.km)}</td><td>${nf(A.t.peajes,2)}</td></tr></tfoot>
+        </table></div>
+      </div>
+      ${respL.length ? `<div class="tarjeta ancha">
+        <h3>Responsables</h3>
+        <div class="tscroll"><table class="tabla">
+          <thead><tr><th>Responsable</th><th>Km</th><th>Partidos liga</th><th>Sustituciones</th><th>Peajes €</th></tr></thead>
+          <tbody>${respL.map(r=>`<tr><td>${imgMini(r.n)}${esc(r.n)}</td><td>${nf(r.km,1)}</td><td>${nf(r.part)}</td><td>${nf(r.sust)}</td><td>${nf(r.peajes,2)}</td></tr>`).join('')}</tbody>
+        </table></div>
+      </div>` : ''}
+    </div>
+    <p class="meta noprint">Datos de la hoja a las ${new Date(R.generado).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</p>`;
+  main.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { S.periodo = b.dataset.p; pintarResumen(); });
+  main.querySelectorAll('[data-met]').forEach(b => b.onclick = () => { S.metricaZona = b.dataset.met; pintarResumen(); });
+  $('#btnPdf').onclick = () => window.print();
+}
+
+let _rz; window.addEventListener('resize', () => { clearTimeout(_rz); _rz = setTimeout(() => { if (S.tab === 'resumen') pintarResumen(); }, 200); });
+function kpi(n, t, s, color) { return `<div class="kpi" style="--k:${color}"><div class="n">${n}</div><div class="t">${t}</div>${s?`<div class="s">${s}</div>`:''}</div>`; }
+
+/** Columnas agrupadas (2 series) con eje Y limpio y tooltip. */
+function columnas(datos) {
+  const W = Math.round(S._wAncho || 640), H = innerWidth >= 900 ? 240 : 200, pl = 34, pr = 8, pt = 14, pb = 26;
+  const max = Math.max(1, ...datos.flatMap(d => [d.aus, d.sust]));
+  const paso = [1,2,5,10,20,25,50,100,200,500].find(p => max / p <= 5) || 1000, top = Math.ceil(max / paso) * paso;
+  const y = v => pt + (H - pt - pb) * (1 - v / top), bw = Math.min(22, ((W - pl - pr) / datos.length - 14) / 2);
+  const slot = (W - pl - pr) / datos.length;
+  let g = '';
+  for (let v = 0; v <= top; v += paso) g += `<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="#e6e8ee"/><text x="${pl-6}" y="${y(v)+4}" font-size="11" fill="#6b7280" text-anchor="end">${v}</text>`;
+  datos.forEach((d, i) => {
+    const cx = pl + slot * i + slot / 2, act = S.periodo === d.m;
+    [[d.aus, C_AUS, -1], [d.sust, C_SUS, 1]].forEach(([v, c, lado]) => {
+      const x = lado < 0 ? cx - bw - 1 : cx + 1, h = Math.max(0, H - pb - y(v));
+      if (h > 0) g += `<path d="${barraV(x, H - pb, bw, h)}" fill="${c}" opacity="${S.periodo==='Temporada'||act?1:.35}"/>`;
+    });
+    g += `<rect x="${cx - slot/2}" y="${pt}" width="${slot}" height="${H-pt-pb}" fill="transparent" data-tip="<b>${d.m}</b><br>Ausencias ${d.aus}<br>Sustituciones ${d.sust}"/>`;
+    g += `<text x="${cx}" y="${H-8}" font-size="12" fill="${act?'#1b1f29':'#6b7280'}" font-weight="${act?700:500}" text-anchor="middle">${MES_CORTO[d.m]}</text>`;
+  });
+  return `<svg class="svgw" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;height:auto" role="img" aria-label="Ausencias y sustituciones por mes">${g}</svg>`;
+}
+function barraV(x, base, w, h) { const r = Math.min(4, h, w/2); return `M${x},${base}V${base-h+r}Q${x},${base-h} ${x+r},${base-h}H${x+w-r}Q${x+w},${base-h} ${x+w},${base-h+r}V${base}Z`; }
+function barraH(x, y, w, h) { const r = Math.min(4, w, h/2); return `M${x},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h-r}Q${x+w},${y+h} ${x+w-r},${y+h}H${x}Z`; }
+
+/** Barras horizontales (una serie) con valor en la punta. */
+function barrasH(items, color, dec, suf) {
+  if (!items.length) return '<p class="ayuda">Sin datos.</p>';
+  const W = Math.round(S._wMitad || 460), fila = 30, lab = Math.min(170, W * 0.38), pr = 56, H = items.length * fila + 4;
+  const max = Math.max(1e-9, ...items.map(i => i.valor));
+  let g = '';
+  items.forEach((it, i) => {
+    const yy = i * fila + 6, w = Math.max(it.valor > 0 ? 3 : 0, (W - lab - pr) * it.valor / max);
+    const nombre = it.etiqueta.length > 22 ? it.etiqueta.slice(0, 21) + '…' : it.etiqueta;
+    g += `<text x="0" y="${yy+(it.sub?8:13)}" font-size="12" fill="#1b1f29" font-weight="600">${esc(nombre)}</text>`;
+    if (it.sub) g += `<text x="0" y="${yy+20}" font-size="10" fill="#6b7280">${esc(it.sub.length>26?it.sub.slice(0,25)+'…':it.sub)}</text>`;
+    g += `<rect x="${lab}" y="${yy}" width="${W-lab-pr}" height="18" rx="4" fill="#f1f2f5"/>`;
+    if (w > 0) g += `<path d="${barraH(lab, yy, w, 18)}" fill="${color}"/>`;
+    g += `<text x="${lab + w + 6}" y="${yy+13}" font-size="12" fill="#1b1f29" font-weight="700">${nf(it.valor, dec)}${suf}</text>`;
+    g += `<rect x="0" y="${yy-4}" width="${W}" height="${fila}" fill="transparent" data-tip="${esc(it.tip)}"/>`;
+  });
+  return `<svg class="svgw" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;height:auto" role="img">${g}</svg>`;
+}
+
+/* tooltip ligero para los gráficos (ratón y dedo) */
+(function(){
+  const tip = $('#tip');
+  const show = (e) => { const t = e.target.closest && e.target.closest('[data-tip]'); if (!t) { tip.classList.remove('si'); return; }
+    tip.innerHTML = t.getAttribute('data-tip'); const p = e.touches ? e.touches[0] : e;
+    const x = Math.min(innerWidth - tip.offsetWidth - 8, p.clientX + 12), y = Math.max(8, p.clientY - tip.offsetHeight - 12);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px'; tip.classList.add('si'); };
+  document.addEventListener('mousemove', show);
+  document.addEventListener('touchstart', show, {passive:true});
+  document.addEventListener('scroll', () => tip.classList.remove('si'), true);
+})();
 
 /* ======================= MENÚ / INSTALAR ======================= */
 let eventoInstalar = null;
