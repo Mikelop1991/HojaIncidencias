@@ -8,7 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Incidencias">
 <title>Incidencias Escuela 26-27</title>
-<script src="config.js?v=6"></script>
+<script src="config.js?v=7"></script>
+<link rel="preconnect" href="https://script.google.com" crossorigin>
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
@@ -202,6 +204,47 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 }
 @media (min-width:900px) and (max-width:1150px){ .fcuerpo{grid-template-columns:1fr} .fcuerpo .tarjeta:first-child{grid-row:auto} }
 
+/* ---------- confirmación rápida y recordatorios */
+.rapido{flex:none;width:44px;height:44px;border-radius:50%;border:2px solid #cfd5e1;color:#9aa3b2;font-size:20px;font-weight:800;display:grid;place-items:center;background:#fff}
+.rapido:hover,.rapido:active{border-color:var(--verde);color:#fff;background:var(--verde)}
+.lote-ok{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--verde-suave);color:var(--verde);border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:14px}
+.lote-ok .lote-btn{flex:none;background:var(--verde);color:#fff;font-weight:800;padding:9px 12px;border-radius:10px;font-size:13px}
+.recordatorio{display:flex;gap:10px;align-items:flex-start;background:#fff4e0;color:#7c4a03;border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:14px;border-left:4px solid #f59e0b}
+.recordatorio span{color:#92600a;font-size:13px}
+.contactos{display:flex;flex-direction:column;gap:8px}
+.contacto{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--linea)}
+.contacto:first-child{border-top:0}
+.contacto img,.contacto .ini{width:38px;height:38px;border-radius:50%;object-fit:cover;flex:none;background:var(--fondo);display:grid;place-items:center;font-weight:700;color:var(--azul);font-size:13px}
+.contacto .nm{flex:1;min-width:0}
+.contacto .nm b{display:block;font-size:14px}
+.contacto .nm span{font-size:12px;color:var(--gris)}
+.wa{flex:none;display:inline-flex;align-items:center;gap:6px;background:#25d366;color:#fff;font-weight:800;font-size:13px;padding:8px 12px;border-radius:10px;text-decoration:none}
+.wa.gris{background:var(--fondo);color:var(--gris)}
+.recs summary{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;cursor:pointer;list-style:none}
+.recs summary::-webkit-details-marker{display:none}
+.recs summary::after{content:"›";font-size:22px;color:var(--gris);transform:rotate(90deg);transition:transform .2s;margin-left:4px}
+.recs[open] summary::after{transform:rotate(-90deg)}
+.recs summary span:first-child{flex:1}
+.pill-pend{font-size:12px;font-weight:800;color:#92600a;background:#fff4e0;padding:6px 10px;border-radius:999px}
+.al-dia{flex:none;font-size:12px;font-weight:800;color:var(--verde);background:var(--verde-suave);padding:6px 10px;border-radius:999px}
+/* ---------- cabecera del informe */
+.inf-cab{display:flex;align-items:center;gap:14px;background:#fff;border-radius:var(--radio);padding:14px 16px;box-shadow:var(--sombra);margin-bottom:12px;position:relative;overflow:hidden}
+.inf-cab::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:linear-gradient(90deg,var(--rojo) 0 50%,#16213a 50% 100%)}
+.inf-fo{height:52px;width:auto;flex:none}
+.inf-escudo{height:52px;width:auto;flex:none;margin-left:auto}
+.inf-tit{min-width:0}
+.inf-kicker{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--rojo)}
+.inf-tit h1{margin:2px 0 2px;font-size:22px;line-height:1.1;color:var(--azul);letter-spacing:-.01em}
+.inf-tit p{margin:0;font-size:13px;color:var(--gris)}
+.graf h3 span,.tarjeta h3 span{display:inline-flex;align-items:center;gap:8px}
+em.num{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;line-height:1;border-radius:7px;background:var(--azul);color:#fff;font-size:12px;font-weight:800;flex:none}
+.inf-pie{display:none}
+@media (max-width:480px){ .inf-escudo{display:none} .inf-tit h1{font-size:19px} .inf-fo{height:44px} }
+@media (min-width:900px){ .inf-cab{padding:18px 22px} .inf-tit h1{font-size:28px} .inf-fo,.inf-escudo{height:64px} }
+/* ---------- logos */
+.logo-login{height:52px;width:auto!important;max-width:none;align-self:flex-start;margin-bottom:10px;display:block;object-fit:contain}
+.logo-cab{height:34px;width:auto;opacity:.95}
+.top .der{display:flex;align-items:center;gap:10px}
 /* ---------- resumen (administración) */
 .periodos{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px}
 .periodos::-webkit-scrollbar{display:none}
@@ -245,13 +288,18 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
   .cab-res .periodos{margin:0}
 }
 @media print{
-  @page{size:A4;margin:12mm}
+  @page{size:A4;margin:12mm 12mm 16mm}
   html,body,#app{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   header,#ficha,#fondoFicha,#menu,#toast,#instalarBanner,.noprint,#tip{display:none!important}
   main{padding:0!important;max-width:none!important}
-  .solo-print{display:block;border-bottom:3px solid var(--rojo);padding-bottom:8px;margin-bottom:12px}
-  .solo-print h1{margin:0;font-size:20px;color:var(--azul)}
-  .solo-print p{margin:2px 0 0;color:var(--gris);font-size:12px}
+  .inf-cab{border:0!important;padding:0 0 14px!important;margin-bottom:14px!important;border-radius:0!important;box-shadow:none!important}
+  .inf-cab::after{height:6px}
+  .inf-tit h1{font-size:30px!important}
+  .inf-kicker{font-size:11px}
+  .inf-fo,.inf-escudo{height:70px!important;display:block!important}
+  .inf-pie{display:block!important;position:fixed;bottom:0;left:0;right:0;font-size:9px;color:#6b7280;text-align:center;border-top:1px solid #e6e8ee;padding-top:4px}
+  .kpi .n{font-size:22px}
+  .tarjeta{padding:12px!important}
   .tarjeta,.kpi{box-shadow:none!important;border:1px solid var(--linea);break-inside:avoid}
   .kpis{grid-template-columns:repeat(3,1fr)}
   .rejilla{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -265,6 +313,7 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 <section id="login">
   <div class="portada"><picture><source media="(min-width:900px)" srcset="fotos/equipo.jpg"><img src="fotos/equipo-movil.jpg" alt="Responsables de la Escuela"></picture></div>
   <div class="relleno"></div>
+  <img class="logo-login" src="logos/fo-blanco.png" alt="Fundación Osasuna">
   <div class="marca">Fundación · Escuela 26-27</div>
   <h1>Registro de incidencias</h1>
   <p>Apunta los viajes, ausencias y sustituciones de tus monitores desde el móvil.</p>
@@ -283,9 +332,10 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
       <div class="quienwrap"><img class="yo oculto" id="yo" alt="">
         <div><div class="hola">Hola,</div><div class="quien" id="quien"></div>
         <button class="conex" id="conexion" aria-live="polite"><i></i><span>Conectando…</span></button></div></div>
+      <div class="der"><img class="logo-cab" src="logos/fo-blanco.png" alt="Fundación Osasuna">
       <button class="icono" id="btnMenu" aria-label="Menú">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-      </button>
+      </button></div>
     </div>
     <div class="meses" id="meses"></div>
     <div class="tabs">
@@ -399,6 +449,7 @@ async function entrar(codigo, silencioso) {
   S.codigo = codigo.trim().toUpperCase();
   S.mes = store.get('inc_mes'); S.grupo = store.get('inc_grupo');
   S.cola = store.getJ('inc_cola_'+S.codigo) || [];
+  S._ayudaRapido = !!store.get('inc_ayuda_rapido');
   // 1) si hay datos guardados en el móvil, se ve todo al instante
   const c = store.getJ('inc_cache_'+S.codigo);
   if (c && c.user) { S.user = c.user; S.datos = c.datos || {}; S.mis = c.mis || {}; mostrarApp(); pintar(); }
@@ -414,7 +465,7 @@ async function entrar(codigo, silencioso) {
     S.user = u; S.datos[datos.mes] = fusionar(datos);
     if (!S.mes || !u.meses.includes(S.mes)) S.mes = datos.mes;
     store.set('inc_codigo', S.codigo); guardarCache();
-    mostrarApp(); pintar(); marcarSinRed(false);
+    mostrarApp(); pintar(); marcarSinRed(false); actualizarAvisos();
     enviarCola();
     precargar().then(() => { if (S.user.admin) refrescarResumen(); });
   } catch (e) {
@@ -525,6 +576,8 @@ function pintarLista() {
   const total = d.monitores.length, hechos = d.monitores.filter(m => m.estado === 'guardado' || m.estado === 'enviando').length;
   const f = S.filtro.toLowerCase();
   const lista = d.monitores.filter(m => !f || `${m.nombre} ${m.ap1} ${m.ap2}`.toLowerCase().includes(f));
+  const rapidos = d.cerrado ? [] : d.monitores.filter(m => m.estado === 'pendiente' && m.fijos.length);
+  const aviso = avisoPendientes(d);
   main.innerHTML = `
     ${grupos}
     ${d.cerrado ? `<div class="aviso">🔒 ${esc(d.mes)} está cerrado: puedes consultar pero no modificar.</div>` : ''}
@@ -535,20 +588,82 @@ function pintarLista() {
     </div>
     ${total > 8 ? `<input class="buscar" id="buscar" placeholder="Buscar monitor…" value="${esc(S.filtro)}">` : ''}
     </div>
-    <div class="lista">${lista.map(m => `
-      <button class="mon" data-k="${esc(m.key)}">
+    ${aviso}
+    ${rapidos.length > 1 && !d.cerrado ? `<button class="lote-ok" id="loteOk"><span><b>${rapidos.length} pendientes</b> con días fijos</span><span class="lote-btn">✓ Confirmar todos sin incidencias</span></button>` : ''}
+    <div class="lista">${lista.map(m => {
+      const rapido = !d.cerrado && m.estado === 'pendiente' && m.fijos.length;
+      return `<div class="mon" role="button" tabindex="0" data-k="${esc(m.key)}">
         <div class="av">${esc(iniciales(m))}</div>
         <div class="info">
           <div class="nom">${esc(m.nombre)} ${esc(m.ap1)} ${esc(m.ap2)}</div>
           <div class="sub">${DIAS_CORTOS.map((x,i)=>`<span class="d ${m.fijos.includes(i)?'fijo':''}">${x}</span>`).join('')}</div>
         </div>
-        <span class="estado ${m.estado}">${{guardado:'✓ Hecho',pendiente:'Pendiente',enhoja:'En hoja',enviando:'↑ Enviando',error:'⚠ Error'}[m.estado]}</span>
-      </button>`).join('') || '<div class="vacio">No hay monitores.</div>'}
-    </div>`;
+        ${rapido ? `<button class="rapido" data-ok="${esc(m.key)}" aria-label="Sin incidencias: confirmar sus días fijos" title="Sin incidencias">✓</button>`
+          : `<span class="estado ${m.estado}">${{guardado:'✓ Hecho',pendiente:'Pendiente',enhoja:'En hoja',enviando:'↑ Enviando',error:'⚠ Error'}[m.estado]}</span>`}
+      </div>`; }).join('') || '<div class="vacio">No hay monitores.</div>'}
+    </div>
+    ${rapidos.length && !S._ayudaRapido ? '<p class="meta">Pulsa ✓ si el monitor ha ido todos sus días fijos y no hay nada que apuntar. Para cualquier incidencia, toca su nombre.</p>' : ''}`;
   main.querySelectorAll('.grupo').forEach(b => b.onclick = () => { S.grupo = b.dataset.g; store.set('inc_grupo', S.grupo); S.filtro=''; pintar(); });
-  main.querySelectorAll('.mon').forEach(b => b.onclick = () => abrirFicha(d.monitores.find(m => m.key === b.dataset.k)));
+  main.querySelectorAll('.mon').forEach(b => {
+    b.onclick = e => { if (e.target.closest('.rapido')) return; abrirFicha(d.monitores.find(m => m.key === b.dataset.k)); };
+    b.onkeydown = e => { if (e.key === 'Enter') b.click(); };
+  });
+  main.querySelectorAll('.rapido').forEach(b => b.onclick = () => {
+    confirmarSinIncidencias([d.monitores.find(m => m.key === b.dataset.ok)]);
+    if (navigator.vibrate) navigator.vibrate(10);
+  });
+  const lo = $('#loteOk');
+  if (lo) lo.onclick = () => {
+    if (!confirm(`Se marcarán ${rapidos.length} monitores con todos sus días fijos (sin festivos) y sin incidencias. Podrás cambiar cualquiera después. ¿Continuar?`)) return;
+    confirmarSinIncidencias(rapidos);
+  };
   const bus = $('#buscar');
   if (bus) bus.oninput = () => { S.filtro = bus.value; const pos = bus.selectionStart; pintarLista(); const nb = $('#buscar'); nb.focus(); nb.setSelectionRange(pos,pos); };
+}
+
+/** Guarda uno o varios monitores con su propuesta (días fijos sin festivos) y sin incidencias. */
+function confirmarSinIncidencias(lista) {
+  const dm = S.datosMes;
+  lista.forEach(m => {
+    const dias = [...seleccionInicial(m, dm)].sort((a,b)=>a-b);
+    const conteo = [0,0,0,0,0]; dias.forEach(x => { const w = new Date(dm.anio, dm.mesNum-1, x).getDay(); if (w>=1&&w<=5) conteo[w-1]++; });
+    const params = { mes:dm.mes, grupo:dm.grupo, key:m.key, dias, partidos:null, ausencias:null, sust:null, km:null, peajes:null, obs:'' };
+    Object.assign(m, { dias, estado:'enviando', actualizado:new Date().toISOString(), por:S.user.persona });
+    Object.assign(m.datos, { conteo, partidos:null, ausencias:null, sust:null, km:null, peajes:null, obs:'' });
+    S.cola = S.cola.filter(x => !(x.action === 'guardarMonitor' && x.params.mes === params.mes && x.params.grupo === params.grupo && x.params.key === params.key));
+    S.cola.push({ action:'guardarMonitor', params, local: JSON.parse(JSON.stringify(m)) });
+  });
+  S._ayudaRapido = true; store.set('inc_ayuda_rapido', '1');
+  guardarCola(); guardarCache(); pintarLista();
+  toast(lista.length > 1 ? `${lista.length} monitores confirmados ✓` : 'Confirmado ✓');
+  enviarCola();
+}
+
+/* ---------- recordatorios dentro de la app */
+function pendientesDe(d) { return Object.values(d.grupos || {}).flat().filter(m => m.estado === 'pendiente' || m.estado === 'error').length; }
+function avisoPendientes(d) {
+  if (d.cerrado) return '';
+  const n = (d.monitores || []).filter(m => m.estado === 'pendiente' || m.estado === 'error').length;
+  if (!n) return '';
+  const hoy = new Date(), mesHoy = hoy.getMonth() + 1, esteMes = mesHoy === d.mesNum;
+  const pasado = !esteMes && (d.anio < hoy.getFullYear() || (d.anio === hoy.getFullYear() && d.mesNum < mesHoy));
+  const finMes = esteMes && hoy.getDate() >= new Date(d.anio, d.mesNum, 0).getDate() - 6;
+  if (!pasado && !finMes) return '';
+  return `<div class="recordatorio">⏰ <div><b>${pasado ? `Quedan ${n} monitores sin revisar de ${d.mes}` : `Se acaba ${d.mes}: quedan ${n} por revisar`}</b><br>
+    <span>${pasado ? 'Complétalos cuanto antes para poder enviarlo a la asesoría.' : 'Puedes confirmar con ✓ los que no tengan incidencias.'}</span></div></div>`;
+}
+/** Número en el icono de la app (Android/Chrome/Edge y iPhone con la app instalada). */
+function actualizarAvisos() {
+  try {
+    const hoy = new Date(); let n = 0;
+    Object.values(S.datos).forEach(d => {
+      if (!d || d.cerrado) return;
+      const pasado = d.anio < hoy.getFullYear() || (d.anio === hoy.getFullYear() && d.mesNum < hoy.getMonth() + 1);
+      const fin = d.anio === hoy.getFullYear() && d.mesNum === hoy.getMonth() + 1 && hoy.getDate() >= new Date(d.anio, d.mesNum, 0).getDate() - 6;
+      if (pasado || fin) n += pendientesDe(d);
+    });
+    if (navigator.setAppBadge) n ? navigator.setAppBadge(n) : navigator.clearAppBadge();
+  } catch (e) {}
 }
 
 function titulo(s){ return String(s).toLowerCase().replace(/(^|\s)\S/g, t => t.toUpperCase()); }
@@ -707,19 +822,31 @@ async function enviarCola() {
   enviando = true;
   try {
     while (S.cola.length) {
-      const it = S.cola[0];
+      const paquete = S.cola.slice(0, 40);              // todo lo pendiente en UNA llamada
+      let res;
       try {
-        const r = await api(it.action, it.params);
-        S.cola.shift(); guardarCola();
-        actualizarEstado(it, 'guardado', r && r.actualizado);
-        marcarSinRed(false);
+        if (S.sinLote) throw Object.assign(new Error('Acción desconocida'), {legacy:true});
+        res = await api('lote', { items: paquete.map(x => ({ action:x.action, params:x.params })) });
       } catch (e) {
-        if (e.red) { marcarSinRed(true); break; }           // sin cobertura: se reintenta luego
-        S.cola.shift(); guardarCola();
-        actualizarEstado(it, 'error'); toast(e.message, true);
+        if (e.red) { marcarSinRed(true); break; }
+        if (!/Acci[oó]n desconocida/.test(e.message)) { toast(e.message, true); break; }
+        S.sinLote = true;                                  // servidor antiguo: de uno en uno
+        res = [];
+        for (const it of paquete) {
+          try { res.push({ ok:true, data: await api(it.action, it.params) }); }
+          catch (e2) { if (e2.red) { marcarSinRed(true); break; } res.push({ ok:false, error:e2.message }); }
+        }
+        if (res.length < paquete.length) { S.cola.splice(0, res.length); guardarCola(); break; }
       }
+      S.cola.splice(0, paquete.length); guardarCola();
+      paquete.forEach((it, i) => {
+        const r = res[i] || {};
+        if (r.ok) actualizarEstado(it, 'guardado', r.data && r.data.actualizado);
+        else { actualizarEstado(it, 'error'); toast(r.error || 'Error al guardar', true); }
+      });
+      marcarSinRed(false);
     }
-  } finally { enviando = false; guardarCache(); }
+  } finally { enviando = false; guardarCache(); actualizarAvisos(); }
 }
 function actualizarEstado(it, estado, cuando) {
   if (it.action !== 'guardarMonitor') return;
@@ -843,7 +970,14 @@ function pintarResumen() {
   const nomPer = S.periodo === 'Temporada' ? 'Temporada 2026-27' : `${S.periodo} ${R.meses.indexOf(S.periodo) >= 0 && MESES_NUM[S.periodo] >= 9 ? 2026 : 2027}`;
 
   main.innerHTML = `
-    <div class="solo-print"><h1>Informe de incidencias · Escuela 26-27</h1><p>${esc(nomPer)} · Generado el ${new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</p></div>
+    <div class="inf-cab">
+      <img class="inf-fo" src="logos/fo-color.png" alt="Fundación Osasuna">
+      <div class="inf-tit"><div class="inf-kicker">Fundación Osasuna · Escuela de Fútbol</div><h1>Informe de incidencias</h1>
+        <p><b>${esc(nomPer)}</b> · ${new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}</p></div>
+      <img class="inf-escudo" src="logos/escudo-color.png" alt="C.A. Osasuna">
+    </div>
+    <div class="inf-pie solo-print">Fundación Osasuna · Escuela de Fútbol 2026-27 · Informe de incidencias · ${esc(nomPer)}</div>
+    ${recordatoriosAdmin()}
     <div class="cab-res noprint">
       <div class="periodos">${['Temporada', ...R.meses].map(m => `<button class="per ${m===S.periodo?'on':''}" data-p="${m}">${m}</button>`).join('')}</div>
       <button class="btnpdf" id="btnPdf"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>Imprimir / PDF</button>
@@ -858,22 +992,21 @@ function pintarResumen() {
     </div>
     <div class="rejilla">
       <div class="tarjeta graf ancha">
-        <h3>Incidencias mes a mes <small>toda la temporada</small></h3>
+        <h3><span><em class="num">1</em>Incidencias mes a mes</span> <small>toda la temporada</small></h3>
         <div class="leg"><span><i style="background:${C_AUS}"></i>Ausencias</span><span><i style="background:${C_SUS}"></i>Sustituciones</span></div>
         ${columnas(porMes)}
       </div>
       <div class="tarjeta graf">
-        <h3>¿Dónde hay más? <small>por zona</small></h3>
+        <h3><span><em class="num">2</em>¿Dónde hay más?</span> <small>por zona · ${metNom.toLowerCase()}</small></h3>
         <div class="metricas noprint">${Object.entries(MET).map(([k,v])=>`<button data-met="${k}" class="${k===S.metricaZona?'on':''}">${v[0]}</button>`).join('')}</div>
-        <p class="ayuda solo-print" style="display:none">${metNom}</p>
         ${barrasH(zonas, S.metricaZona==='sust'?C_SUS:C_AUS, metDec, S.metricaZona==='tasa'?' %':S.metricaZona==='peajes'?' €':'')}
       </div>
       <div class="tarjeta graf">
-        <h3>Más ausencias <small>top 10 monitores</small></h3>
+        <h3><span><em class="num">3</em>Más ausencias</span> <small>top 10 monitores</small></h3>
         ${top.length ? barrasH(top, C_AUS, 0, '') : '<p class="ayuda">Sin ausencias en este periodo.</p>'}
       </div>
       <div class="tarjeta ancha">
-        <h3>Detalle por zona</h3>
+        <h3><span><em class="num">4</em>Detalle por zona</span></h3>
         <div class="tscroll"><table class="tabla">
           <thead><tr><th>Zona</th><th>Monitores</th><th>Viajes</th><th>Ausencias</th><th>% aus.</th><th>Sustit.</th><th>Liga</th><th>Km</th><th>Peajes €</th></tr></thead>
           <tbody>${A.zonas.sort((a,b)=>b.aus-a.aus).map(z=>`<tr><td>${imgMini(z.g)}${esc(titulo(z.g))}</td><td>${z.mon.size}</td><td>${nf(z.viajes)}</td><td>${nf(z.aus)}</td><td>${nf(z.viajes+z.aus?z.aus/(z.viajes+z.aus)*100:0,1)}</td><td>${nf(z.sust)}</td><td>${nf(z.part)}</td><td>${nf(z.km)}</td><td>${nf(z.peajes,2)}</td></tr>`).join('')}</tbody>
@@ -881,7 +1014,7 @@ function pintarResumen() {
         </table></div>
       </div>
       ${respL.length ? `<div class="tarjeta ancha">
-        <h3>Responsables</h3>
+        <h3><span><em class="num">5</em>Responsables</span></h3>
         <div class="tscroll"><table class="tabla">
           <thead><tr><th>Responsable</th><th>Km</th><th>Partidos liga</th><th>Sustituciones</th><th>Peajes €</th></tr></thead>
           <tbody>${respL.map(r=>`<tr><td>${imgMini(r.n)}${esc(r.n)}</td><td>${nf(r.km,1)}</td><td>${nf(r.part)}</td><td>${nf(r.sust)}</td><td>${nf(r.peajes,2)}</td></tr>`).join('')}</tbody>
@@ -890,11 +1023,45 @@ function pintarResumen() {
     </div>
     <p class="meta noprint">Datos de la hoja a las ${new Date(R.generado).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</p>`;
   main.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { S.periodo = b.dataset.p; pintarResumen(); });
+  const rc = main.querySelector('.recs'); if (rc) rc.ontoggle = () => { S._recsAbierto = rc.open; };
   main.querySelectorAll('[data-met]').forEach(b => b.onclick = () => { S.metricaZona = b.dataset.met; pintarResumen(); });
   $('#btnPdf').onclick = () => window.print();
 }
 
 let _rz; window.addEventListener('resize', () => { clearTimeout(_rz); _rz = setTimeout(() => { if (S.tab === 'resumen') pintarResumen(); }, 200); });
+const nrm = t => String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();
+/** Tarjeta de recordatorios por WhatsApp (solo administración). */
+function recordatoriosAdmin() {
+  const cs = (S.user.contactos || []);
+  if (!cs.length) return '';
+  const mes = S.periodo !== 'Temporada' ? S.periodo : (S.user.meses.includes(S.user.mesActual) ? S.user.mesActual : S.user.meses[S.user.meses.length-1]);
+  const d = S.datos[mes];
+  if (!d) return '';
+  const url = location.origin + location.pathname;
+  const filas = cs.map(c => {
+    let pend = 0, tot = 0;
+    c.grupos.forEach(g => { const k = Object.keys(d.grupos).find(x => nrm(x) === nrm(g)); const l = d.grupos[k] || [];
+      tot += l.length; pend += l.filter(m => m.estado === 'pendiente' || m.estado === 'error').length; });
+    let tel = c.telefono || ''; if (tel && !tel.startsWith('+') && tel.length === 9) tel = '34' + tel; tel = tel.replace('+','');
+    const nombre = c.persona.split(' ')[0];
+    const msg = `Hola ${nombre} 👋 Te quedan ${pend} monitor${pend>1?'es':''} por revisar de ${mes} en la app de incidencias. Si no tienen incidencias, puedes confirmarlos con ✓ en un momento: ${url}?c=${encodeURIComponent(c.codigo)} ¡Gracias!`;
+    return { c, pend, tot, tel, msg };
+  });
+  const totalPend = filas.reduce((a,f)=>a+f.pend,0);
+  const grupo = `📋 Incidencias de ${mes} — monitores pendientes de revisar:\n` + filas.filter(f=>f.pend).map(f=>`• ${f.c.persona}: ${f.pend}`).join('\n') + `\n\nApp: ${url}`;
+  return `<details class="tarjeta noprint recs" ${S._recsAbierto ? 'open' : ''}>
+    <summary><span>⏰ Recordatorios · ${esc(mes)}</span><span class="${totalPend?'pill-pend':'al-dia'}">${totalPend ? totalPend + ' pendientes' : '✓ Al día'}</span></summary>
+    ${totalPend ? `<div style="margin:10px 0 4px"><a class="wa gris" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(grupo)}">Mensaje para el grupo de WhatsApp</a></div>` : ''}
+    <p class="ayuda">${totalPend ? `Quedan <b>${totalPend}</b> monitores sin revisar. Envía un recordatorio con un toque (se abre WhatsApp con el mensaje y su enlace de acceso).` : 'Todos los responsables están al día. 👏'}</p>
+    <div class="contactos">${filas.map(f => `<div class="contacto">
+      <img src="${fotoDe(f.c.persona)}" alt="" onerror="this.outerHTML='<div class=ini>${esc(f.c.persona.split(' ').map(x=>x[0]).join('').slice(0,2))}</div>'">
+      <div class="nm"><b>${esc(f.c.persona)}</b><span>${f.pend ? `${f.pend} de ${f.tot} pendientes` : `${f.tot} monitores`}</span></div>
+      ${f.pend ? `<a class="wa ${f.tel?'':'gris'}" target="_blank" rel="noopener" href="https://wa.me/${f.tel}?text=${encodeURIComponent(f.msg)}">${f.tel ? 'WhatsApp' : 'Elegir chat'}</a>` : '<span class="al-dia">✓ Al día</span>'}
+    </div>`).join('')}</div>
+    ${filas.some(f=>f.pend && !f.tel) ? '<p class="meta" style="text-align:left">Para enviar directo a cada uno, añade su móvil en la columna «Teléfono (WhatsApp)» de la hoja _Accesos.</p>' : ''}
+  </details>`;
+}
+
 function kpi(n, t, s, color) { return `<div class="kpi" style="--k:${color}"><div class="n">${n}</div><div class="t">${t}</div>${s?`<div class="s">${s}</div>`:''}</div>`; }
 
 /** Columnas agrupadas (2 series) con eje Y limpio y tooltip. */
@@ -997,6 +1164,11 @@ $('#salir').onclick = () => {
 /* ======================= ARRANQUE ======================= */
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !(window.google && google.script)) {
   navigator.serviceWorker.register('sw.js').catch(()=>{});
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data !== 'nueva-version') return;
+    const t = $('#toast'); t.innerHTML = 'Hay una versión nueva · <u>Actualizar</u>'; t.className = 'si'; t.style.pointerEvents = 'auto';
+    t.onclick = () => location.reload();
+  });
 }
 (function(){
   const url = new URLSearchParams(location.search).get('c');   // enlace directo: ...?c=CODIGO

@@ -27,7 +27,7 @@ var MESES = ['Octubre', 'Noviembre', 'Diciembre', 'Enero', 'Febrero', 'Marzo', '
 var MES_NUM = { Octubre: 10, Noviembre: 11, Diciembre: 12, Enero: 1, Febrero: 2, Marzo: 3, Abril: 4, Mayo: 5, Junio: 6 };
 var DIAS = ['L', 'M', 'X', 'J', 'V'];
 
-var H_ACCESOS = ['Código', 'Persona', 'Grupos (separados por ; o * = todos)', 'Nombre en hoja Responsables', 'Admin'];
+var H_ACCESOS = ['Código', 'Persona', 'Grupos (separados por ; o * = todos)', 'Nombre en hoja Responsables', 'Admin', 'Teléfono (WhatsApp)'];
 var H_MONITORES = ['Grupo', 'Nombre', 'Primer Apellido', 'Segundo Apellido', 'L', 'M', 'X', 'J', 'V', 'Activo'];
 var H_FESTIVOS = ['Fecha', 'Descripción'];
 var H_AJUSTES = ['Clave', 'Valor', 'Nota'];
@@ -214,6 +214,7 @@ function configurarInicial() {
 
   // --- Accesos: un código por responsable (los grupos con el mismo nombre de persona se juntan)
   var shAcc = hoja_('_Accesos', H_ACCESOS);
+  if (!String(shAcc.getRange(1, 6).getValue() || '').trim()) shAcc.getRange(1, 6).setValue(H_ACCESOS[5]).setFontWeight('bold').setBackground('#1f2a44').setFontColor('#ffffff');
   var accExist = filas_(shAcc);
   var gruposCubiertos = {};
   accExist.forEach(function (r) { String(r[2]).split(';').forEach(function (g) { gruposCubiertos[norm_(g)] = true; }); });
@@ -231,10 +232,10 @@ function configurarInicial() {
   var filasAcc = ordenP.map(function (p) {
     var nombreResp = nombresResp[p] || '';
     var bonito = nombreResp || p.toLowerCase().replace(/(^|\s)\S/g, function (t) { return t.toUpperCase(); });
-    return [nuevoCodigo_(), bonito, porPersona[p].join('; '), nombreResp, false];
+    return [nuevoCodigo_(), bonito, porPersona[p].join('; '), nombreResp, false, ''];
   });
   if (!accExist.some(function (r) { return esVerdadero_(r[4]); })) {
-    filasAcc.unshift([nuevoCodigo_(), 'Administración', '*', '', true]);
+    filasAcc.unshift([nuevoCodigo_(), 'Administración', '*', '', true, '']);
   }
   if (filasAcc.length) {
     var st = shAcc.getLastRow() + 1;
@@ -288,7 +289,11 @@ function usuario_(codigo) {
       var propios = admin
         ? uniq_(filas_(ss_().getSheetByName('Responsables')).map(function (x) { return String(x[1] || '').trim(); }).filter(String))
         : (String(r[3]).trim() ? [String(r[3]).trim()] : []);
-      return { persona: String(r[1]).trim(), grupos: grupos, admin: admin, responsables: propios };
+      var contactos = admin ? filas.filter(function (x) { return x[0] && !(esVerdadero_(x[4]) || String(x[2]).trim() === '*'); }).map(function (x) {
+        return { persona: String(x[1]).trim(), codigo: String(x[0]).trim(), telefono: String(x[5] || '').replace(/[^0-9+]/g, ''),
+          grupos: String(x[2]).split(';').map(function (g) { return g.trim(); }).filter(String) };
+      }) : [];
+      return { persona: String(r[1]).trim(), grupos: grupos, admin: admin, responsables: propios, contactos: contactos };
     }
   }
   throw new Error('Código no válido.');
@@ -419,16 +424,67 @@ function monitoresDelGrupo_(mes, grupo, hm, fijos) {
 }
 
 function diasGuardados_(mes, grupo) {
-  var out = {}, g = norm_(grupo);
+  var out = {}, g = grupo == null ? null : norm_(grupo);
   filas_(hoja_('_Dias', H_DIAS)).forEach(function (r) {
-    if (r[0] === mes && norm_(r[1]) === g) {
-      out[r[2]] = {
-        dias: String(r[3]).split(',').map(function (x) { return parseInt(x, 10); }).filter(function (x) { return !isNaN(x); }),
-        actualizado: r[4] instanceof Date ? r[4].toISOString() : String(r[4] || ''), por: String(r[5] || '')
-      };
-    }
+    if (r[0] !== mes) return;
+    var rg = norm_(r[1]);
+    if (g !== null && rg !== g) return;
+    var reg = {
+      dias: String(r[3]).split(',').map(function (x) { return parseInt(x, 10); }).filter(function (x) { return !isNaN(x); }),
+      actualizado: r[4] instanceof Date ? r[4].toISOString() : String(r[4] || ''), por: String(r[5] || '')
+    };
+    if (g === null) { (out[rg] = out[rg] || {})[r[2]] = reg; } else out[r[2]] = reg;
   });
   return out;
+}
+
+/** Datos de un mes para TODOS los grupos (se guarda en caché 60 s y se borra al guardar). */
+function datosMesTodos_(mes, aj) {
+  var hm = datosHojaMes_(mes), fijos = fijosMap_(), c = hm.c, y = anioDeMes_(mes, aj), mn = MES_NUM[mes];
+  if (!c) return { anio: y, mesNum: mn, grupos: {} };
+  var todosDias = diasGuardados_(mes, null), grupos = [], porGrupo = {};
+  hm.filas.forEach(function (x) { var g = String(x.r[c.grupo]).trim(); if (grupos.indexOf(g) < 0) grupos.push(g); });
+  grupos.forEach(function (g) {
+    var dias = todosDias[norm_(g)] || {};
+    porGrupo[g] = monitoresDelGrupo_(mes, g, hm, fijos).map(function (m) {
+      var r = m._r, d = dias[m.key];
+      delete m._r;
+      m.datos = { conteo: [null, null, null, null, null], partidos: null, ausencias: null, sust: null, km: null, peajes: null, obs: '' };
+      if (r) {
+        m.datos.conteo = c.dias.map(function (col) { var v = r[col]; return v === '' || v == null ? null : (num_(v) == null ? String(v) : num_(v)); });
+        m.datos.partidos = num_(r[c.partidos]); m.datos.ausencias = num_(r[c.ausencias]); m.datos.sust = num_(r[c.sust]);
+        m.datos.km = num_(r[c.km]); m.datos.peajes = num_(r[c.peajes]); m.datos.obs = String(r[c.obs] || '');
+      }
+      // ¿alguien cambió los viajes directamente en la hoja? entonces manda la hoja
+      if (d) {
+        var cnt = [0, 0, 0, 0, 0];
+        d.dias.forEach(function (dd) { var w = new Date(y, mn - 1, dd).getDay(); if (w >= 1 && w <= 5) cnt[w - 1]++; });
+        var igual = m.datos.conteo.every(function (v, i) { return (typeof v === 'number' ? v : 0) === cnt[i] || (v !== null && typeof v !== 'number'); });
+        if (!igual) d = null;
+      }
+      m.dias = d ? d.dias : null;
+      m.actualizado = d ? d.actualizado : '';
+      m.por = d ? d.por : '';
+      var conDatos = r && [c.partidos, c.ausencias, c.sust, c.km, c.peajes, c.obs].concat(c.dias)
+        .some(function (col) { var v = r[col]; return v !== '' && v != null && String(v).toLowerCase() !== 'x'; });
+      m.estado = d ? 'guardado' : (conDatos ? 'enhoja' : 'pendiente');
+      return m;
+    });
+  });
+  return { anio: y, mesNum: mn, grupos: porGrupo };
+}
+
+// ---------------------------------------------------------------- bloqueo (reentrante dentro de una misma llamada)
+var _bloqueado = false;
+function conBloqueo_(fn) {
+  if (_bloqueado) return fn();
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  _bloqueado = true;
+  try { return fn(); } finally { _bloqueado = false; lock.releaseLock(); }
+}
+function invalidarMes_(mes) {
+  try { CacheService.getScriptCache().removeAll(['resumen', 'mes_' + mes]); } catch (e) { }
 }
 
 // ---------------------------------------------------------------- acciones de la API
@@ -440,7 +496,7 @@ var ACCIONES = {
     var hoy = new Date(), mesHoy = null;
     MESES.forEach(function (m) { if (MES_NUM[m] === hoy.getMonth() + 1) mesHoy = m; });
     return {
-      persona: u.persona, grupos: u.grupos, admin: u.admin, responsables: u.responsables,
+      persona: u.persona, grupos: u.grupos, admin: u.admin, responsables: u.responsables, contactos: u.contactos,
       meses: mesesDisponibles_(),
       mesActual: (function () { var d = mesesDisponibles_(); return d.indexOf(mesHoy) >= 0 ? mesHoy : d[d.length - 1]; })(),
       cerrados: MESES.filter(function (m) { return aj.cerrados.indexOf(norm_(m)) >= 0; })
@@ -452,39 +508,15 @@ var ACCIONES = {
     comprobarMes_(p.mes, aj, false);
     var grupos = p.grupo ? [p.grupo] : u.grupos;
     grupos.forEach(function (g) { comprobarGrupo_(u, g); });
-    var hm = datosHojaMes_(p.mes), fijos = fijosMap_(), c = hm.c, y = anioDeMes_(p.mes, aj), mn = MES_NUM[p.mes];
+    var todo = cacheado_('mes_' + p.mes, function () { return datosMesTodos_(p.mes, aj); });
     var porGrupo = {};
     grupos.forEach(function (g) {
-      var dias = diasGuardados_(p.mes, g);
-      porGrupo[g] = monitoresDelGrupo_(p.mes, g, hm, fijos).map(function (m) {
-        var r = m._r, d = dias[m.key];
-        delete m._r;
-        m.datos = { conteo: [null, null, null, null, null], partidos: null, ausencias: null, sust: null, km: null, peajes: null, obs: '' };
-        if (r) {
-          m.datos.conteo = c.dias.map(function (col) { var v = r[col]; return v === '' || v == null ? null : (num_(v) == null ? String(v) : num_(v)); });
-          m.datos.partidos = num_(r[c.partidos]); m.datos.ausencias = num_(r[c.ausencias]); m.datos.sust = num_(r[c.sust]);
-          m.datos.km = num_(r[c.km]); m.datos.peajes = num_(r[c.peajes]); m.datos.obs = String(r[c.obs] || '');
-        }
-        // ¿alguien cambió los viajes directamente en la hoja? entonces manda la hoja
-        if (d) {
-          var cnt = [0, 0, 0, 0, 0];
-          d.dias.forEach(function (dd) { var w = new Date(y, mn - 1, dd).getDay(); if (w >= 1 && w <= 5) cnt[w - 1]++; });
-          var igual = m.datos.conteo.every(function (v, i) { return (typeof v === 'number' ? v : 0) === cnt[i] || (v !== null && typeof v !== 'number'); });
-          if (!igual) d = null;
-        }
-        m.dias = d ? d.dias : null;
-        m.actualizado = d ? d.actualizado : '';
-        m.por = d ? d.por : '';
-        var conDatos = r && [c.partidos, c.ausencias, c.sust, c.km, c.peajes, c.obs].concat(c.dias)
-          .some(function (col) { var v = r[col]; return v !== '' && v != null && String(v).toLowerCase() !== 'x'; });
-        m.estado = d ? 'guardado' : (conDatos ? 'enhoja' : 'pendiente');
-        return m;
-      });
+      var k = Object.keys(todo.grupos).filter(function (x) { return norm_(x) === norm_(g); })[0];
+      porGrupo[g] = k ? todo.grupos[k] : [];
     });
     return {
-      mes: p.mes, anio: y, mesNum: mn, festivos: festivosDelMes_(p.mes, aj),
+      mes: p.mes, anio: todo.anio, mesNum: todo.mesNum, festivos: festivosDelMes_(p.mes, aj),
       cerrado: aj.cerrados.indexOf(norm_(p.mes)) >= 0, grupos: porGrupo,
-      // compatibilidad con un solo grupo
       grupo: p.grupo || null, monitores: p.grupo ? porGrupo[p.grupo] : undefined
     };
   },
@@ -516,6 +548,20 @@ var ACCIONES = {
     return out;
   },
 
+  /** Varios guardados en una sola llamada (más rápido desde el móvil). */
+  lote: function (p) {
+    var res = [];
+    conBloqueo_(function () {
+      (p.items || []).forEach(function (it) {
+        if (it.action !== 'guardarMonitor' && it.action !== 'guardarMisDatos') { res.push({ ok: false, error: 'Acción no permitida' }); return; }
+        var q = it.params || {}; q.codigo = p.codigo;
+        try { res.push({ ok: true, data: ACCIONES[it.action](q) }); }
+        catch (e) { res.push({ ok: false, error: e && e.message ? e.message : String(e) }); }
+      });
+    });
+    return res;
+  },
+
   /** login + datos del mes en una sola llamada (arranque rápido) */
   inicio: function (p) {
     var l = ACCIONES.login(p);
@@ -530,9 +576,7 @@ var ACCIONES = {
     comprobarGrupo_(u, p.grupo);
     var m = monitoresDelGrupo_(p.mes, p.grupo).filter(function (x) { return x.key === p.key; })[0];
     if (!m) throw new Error('Ese monitor no está en tu grupo este mes.');
-    var lock = LockService.getScriptLock();
-    lock.waitLock(20000);
-    try {
+    return conBloqueo_(function () {
       var y = anioDeMes_(p.mes, aj), mn = MES_NUM[p.mes];
       var diasMes = new Date(y, mn, 0).getDate();
       var dias = uniq_((p.dias || []).map(Number).filter(function (d) { return d >= 1 && d <= diasMes; })).sort(function (a, b) { return a - b; });
@@ -558,10 +602,10 @@ var ACCIONES = {
         }
       }
       if (!hecho) shD.appendRow([p.mes, p.grupo, p.key, dias.join(','), ahora, u.persona]);
-      try { CacheService.getScriptCache().remove('resumen'); } catch (e) { }
+      invalidarMes_(p.mes);
       log_(u.persona, 'Guardar monitor', p.mes + ' · ' + p.grupo + ' · ' + m.nombre + ' ' + m.ap1 + ' · días ' + dias.join(','));
       return { ok: true, conteo: conteo, actualizado: ahora.toISOString() };
-    } finally { lock.releaseLock(); }
+    });
   },
 
   misDatos: function (p) {
@@ -583,9 +627,7 @@ var ACCIONES = {
     comprobarMes_(p.mes, aj, true);
     var nombre = p.responsable || u.responsables[0];
     if (!nombre || u.responsables.indexOf(nombre) < 0) throw new Error('No tienes datos propios configurados.');
-    var lock = LockService.getScriptLock();
-    lock.waitLock(20000);
-    try {
+    return conBloqueo_(function () {
       var sh = ss_().getSheetByName('Responsables'), M = norm_(p.mes), datos = filas_(sh), fila = -1;
       for (var i = 0; i < datos.length; i++) if (norm_(datos[i][0]) === M && norm_(datos[i][1]) === norm_(nombre)) { fila = i + 2; break; }
       var valores = [[num_(p.km) == null ? '' : num_(p.km), num_(p.partidos) == null ? '' : num_(p.partidos),
@@ -598,10 +640,10 @@ var ACCIONES = {
         sh.getRange(fila, 1, 1, 2).setValues([[p.mes.toUpperCase(), nombre]]);
       }
       sh.getRange(fila, 3, 1, 5).setValues(valores);
-      try { CacheService.getScriptCache().remove('resumen'); } catch (e) { }
+      invalidarMes_(p.mes);
       log_(u.persona, 'Guardar mis datos', p.mes + ' · ' + nombre);
       return { ok: true };
-    } finally { lock.releaseLock(); }
+    });
   }
 };
 
