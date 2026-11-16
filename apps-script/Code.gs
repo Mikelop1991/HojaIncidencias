@@ -45,10 +45,11 @@ var _registro = null;
 /** Hoja compartida del registro (meses + Responsables). */
 function ss_() {
   if (!_registro) _registro = URL_HOJA_REGISTRO ? SpreadsheetApp.openByUrl(URL_HOJA_REGISTRO) : SpreadsheetApp.getActiveSpreadsheet();
+  if (!_registro) throw new Error('Este proyecto de Apps Script no está dentro de la Excel. Ábrelo desde la Excel (Extensiones → Apps Script) o pega la dirección de la Excel en URL_HOJA_REGISTRO, arriba del todo.');
   return _registro;
 }
-/** Hoja privada de configuración (códigos, monitores, festivos...). */
-function cfg_() { return SpreadsheetApp.getActiveSpreadsheet(); }
+/** Hoja donde están _Accesos, _Monitores... (la propia Excel, salvo que el script viva en otra hoja). */
+function cfg_() { return SpreadsheetApp.getActiveSpreadsheet() || ss_(); }
 
 function norm_(s) {
   return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
