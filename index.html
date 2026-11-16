@@ -8,9 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Incidencias">
 <title>Incidencias Escuela 26-27</title>
-<script src="config.js?v=5"></script>
+<script src="config.js?v=6"></script>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
 :root{
@@ -28,6 +28,7 @@ button{cursor:pointer;border:0;background:none}
 /* ---------- login */
 #login{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:32px 24px calc(32px + env(safe-area-inset-bottom));
   background:linear-gradient(160deg,var(--rojo) 0%,#7d0b15 100%);color:#fff}
+#login{background:linear-gradient(180deg,rgba(179,18,31,0) 0,rgba(179,18,31,0) calc(50.5vw - 90px),var(--rojo) calc(50.5vw + 2px),#7d0b15 100%),url(fotos/equipo.jpg) top center/100% auto no-repeat,var(--rojo);justify-content:flex-end}
 #login .marca{font-weight:800;letter-spacing:.08em;font-size:13px;opacity:.85;text-transform:uppercase}
 #login h1{font-size:34px;line-height:1.1;margin:8px 0 6px}
 #login p{opacity:.85;margin:0 0 28px}
@@ -44,6 +45,9 @@ button{cursor:pointer;border:0;background:none}
 /* ---------- cabecera */
 header{position:sticky;top:0;z-index:5;background:var(--azul);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 0}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.yo{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.85);flex:none;background:#2a3655}
+.quienwrap{display:flex;align-items:center;gap:12px}
+.mini{width:22px;height:22px;border-radius:50%;object-fit:cover;vertical-align:middle;margin:-4px 6px -4px -4px}
 .top .hola{font-size:13px;opacity:.7}
 .top .quien{font-weight:700;font-size:18px}
 .icono{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:rgba(255,255,255,.1);color:#fff}
@@ -166,7 +170,7 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 #fondoFicha{position:fixed;inset:0;z-index:19;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:opacity .25s}
 /* ---------- ordenador / tablet */
 @media (min-width:900px){
-  #login{align-items:center}
+  #login{align-items:flex-end;justify-content:center;padding-right:7vw;background:linear-gradient(90deg,rgba(179,18,31,0) 0,rgba(179,18,31,0) 48%,var(--rojo) 56%),url(fotos/equipo.jpg) left center/56% auto no-repeat,linear-gradient(160deg,var(--rojo),#7d0b15)}
   #login>*{width:100%;max-width:440px}
   header{padding-left:32px;padding-right:32px}
   header>*{max-width:1240px;margin-left:auto;margin-right:auto}
@@ -213,8 +217,9 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 <section id="app" class="oculto">
   <header>
     <div class="top">
-      <div><div class="hola">Hola,</div><div class="quien" id="quien"></div>
-        <button class="conex" id="conexion" aria-live="polite"><i></i><span>Conectando…</span></button></div>
+      <div class="quienwrap"><img class="yo oculto" id="yo" alt="">
+        <div><div class="hola">Hola,</div><div class="quien" id="quien"></div>
+        <button class="conex" id="conexion" aria-live="polite"><i></i><span>Conectando…</span></button></div></div>
       <button class="icono" id="btnMenu" aria-label="Menú">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
@@ -304,6 +309,11 @@ function toast(msg, mal) {
   clearTimeout(toast._t); toast._t = setTimeout(() => t.className = '', 2600);
 }
 
+/* ---------- fotos de perfil (carpeta fotos/, nombre-apellido.jpg) */
+const slug = t => String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().split(/\s+/).slice(0,2).join('-');
+const fotoDe = nombre => 'fotos/' + (/^administraci/i.test(nombre) ? 'mikel-lopez' : slug(nombre)) + '.jpg';
+function imgMini(nombre){ return `<img class="mini" src="${fotoDe(nombre)}" alt="" onerror="this.remove()">`; }
+
 /* ======================= LOGIN ======================= */
 function mostrarApp() {
   const u = S.user;
@@ -312,6 +322,7 @@ function mostrarApp() {
   if (!u.responsables.includes(S.misResp)) S.misResp = u.responsables[0] || null;
   $('#login').classList.add('oculto'); $('#app').classList.remove('oculto');
   $('#quien').textContent = u.persona;
+  const yo = $('#yo'); yo.onerror = () => yo.classList.add('oculto'); yo.onload = () => yo.classList.remove('oculto'); yo.src = fotoDe(u.persona);
   $('#tabMis').classList.toggle('oculto', !u.responsables.length);
   pintarMeses();
 }
@@ -327,8 +338,13 @@ async function entrar(codigo, silencioso) {
   if (c && c.user) { S.user = c.user; S.datos = c.datos || {}; S.mis = c.mis || {}; mostrarApp(); pintar(); }
   // 2) en una sola llamada: comprobar código + datos del mes
   try {
-    const u = await api('inicio', { mes: S.mes });
-    const datos = u.datos; delete u.datos;
+    let u, datos;
+    try { u = await api('inicio', { mes: S.mes }); datos = u.datos; delete u.datos; }
+    catch (e) {
+      if (!/Acci[oó]n desconocida/.test(e.message)) throw e;
+      S.antiguo = true; u = await api('login');                  // servidor de la versión anterior
+      datos = await pedirMes(S.mes && u.meses.includes(S.mes) ? S.mes : u.mesActual, u);
+    }
     S.user = u; S.datos[datos.mes] = fusionar(datos);
     if (!S.mes || !u.meses.includes(S.mes)) S.mes = datos.mes;
     store.set('inc_codigo', S.codigo); guardarCache();
@@ -345,11 +361,20 @@ async function entrar(codigo, silencioso) {
 $('#entrar').onclick = () => entrar($('#codigo').value);
 $('#codigo').addEventListener('keydown', e => { if (e.key === 'Enter') entrar($('#codigo').value); });
 
+/** Pide los datos de un mes (todos los grupos). Con el servidor antiguo, grupo a grupo. */
+async function pedirMes(mes, u) {
+  if (!S.antiguo) return api('mes', { mes });
+  u = u || S.user;
+  const partes = await Promise.all(u.grupos.map(g => api('mes', { mes, grupo:g })));
+  const d = Object.assign({}, partes[0], { grupos:{} }); partes.forEach((p, i) => d.grupos[u.grupos[i]] = p.monitores);
+  return d;
+}
+
 /** Descarga en segundo plano el resto de meses para que cambiar de mes sea instantáneo. */
 async function precargar() {
   for (const m of S.user.meses.slice().reverse()) {
     if (S.datos[m] && S.datos[m]._fresco) continue;
-    try { const d = await api('mes', { mes:m }); S.datos[m] = fusionar(d); guardarCache(); } catch (e) { return; }
+    try { const d = await pedirMes(m); S.datos[m] = fusionar(d); guardarCache(); } catch (e) { return; }
   }
 }
 
@@ -412,7 +437,7 @@ async function cargar(forzar) {
   if (tab === 'mis') return refrescarMisDatos(forzar);
   if (d && !forzar && Date.now() - d._fresco < 60000) return;     // reciente: no hace falta volver a pedir
   try {
-    const nuevo = fusionar(await api('mes', { mes }));
+    const nuevo = fusionar(await pedirMes(mes));
     S.datos[mes] = nuevo; guardarCache(); marcarSinRed(false);
     if (S.mes === mes && S.tab === 'monitores' && !S.ficha) pintar();
   } catch (e) {
@@ -427,7 +452,7 @@ function iniciales(m){ return ((m.nombre[0]||'') + (m.ap1[0]||'')).toUpperCase()
 function pintarLista() {
   const d = S.datosMes, main = $('#main');
   const grupos = S.user.grupos.length > 1
-    ? `<div class="grupos">${S.user.grupos.map(g => `<button class="grupo ${g===S.grupo?'on':''}" data-g="${esc(g)}">${esc(titulo(g))}</button>`).join('')}</div>` : '';
+    ? `<div class="grupos">${S.user.grupos.map(g => `<button class="grupo ${g===S.grupo?'on':''}" data-g="${esc(g)}">${imgMini(g)}${esc(titulo(g))}</button>`).join('')}</div>` : '';
   const total = d.monitores.length, hechos = d.monitores.filter(m => m.estado === 'guardado' || m.estado === 'enviando').length;
   const f = S.filtro.toLowerCase();
   const lista = d.monitores.filter(m => !f || `${m.nombre} ${m.ap1} ${m.ap2}`.toLowerCase().includes(f));
@@ -657,7 +682,7 @@ function pintarMisDatos(d) {
   const main = $('#main'), dis = d.cerrado ? 'disabled' : '';
   const v = { km:d.km, partidos:d.partidos||0, sust:d.sust||0, peajes:d.peajes, obs:d.obs };
   const sel = S.user.responsables.length > 1
-    ? `<div class="grupos">${S.user.responsables.map(r=>`<button class="grupo ${r===S.misResp?'on':''}" data-r="${esc(r)}">${esc(r)}</button>`).join('')}</div>` : '';
+    ? `<div class="grupos">${S.user.responsables.map(r=>`<button class="grupo ${r===S.misResp?'on':''}" data-r="${esc(r)}">${imgMini(r)}${esc(r)}</button>`).join('')}</div>` : '';
   main.innerHTML = `
     ${sel}
     ${d.cerrado ? `<div class="aviso">🔒 ${esc(S.mes)} está cerrado.</div>` : ''}
