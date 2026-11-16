@@ -1,78 +1,39 @@
-# App de incidencias · Escuela 26-27 — Guía de puesta en marcha
+# App de incidencias · Escuela 26-27 — Guía
 
-La app escribe **directamente en tu hoja de Google**. Las hojas de los meses siguen igual: los responsables apuntan desde el móvil, y tú sigues viendo y exportando el Excel como siempre.
+**App:** https://mikelop1991.github.io/HojaIncidencias/
 
-```
-incidencias/
-├── apps-script/
-│   ├── Code.gs        ← el "motor" (va dentro de la hoja de Google)
-│   └── Index.html     ← la app (copia de app/index.html)
-└── app/               ← la misma app, preparada para instalarse en el móvil
-    ├── index.html, manifest.webmanifest, sw.js, icon-192.png, icon-512.png
-```
+## Cómo está montado
 
----
+| Dónde | Qué hay | Quién lo ve |
+|---|---|---|
+| **Hoja compartida del registro** | Solo tu plantilla de siempre: `Responsables`, `Octubre`, `Noviembre`… | Responsables y monitores |
+| **Hoja privada «Configuración app incidencias»** | El programa (Apps Script) y las pestañas `_Accesos` (códigos), `_Monitores` (días fijos), `_Festivos`, `_Ajustes`, `_Dias`, `_Registro` | Solo tú |
 
-## 1. Pasar el Excel a Hoja de cálculo de Google (una sola vez)
+- La app escribe **solo en las columnas E–O** (viajes L–V, liga, ausencias, sustituciones, km, peajes, observaciones) de la fila de cada monitor, y en las columnas C–G de `Responsables`. El resto de la plantilla no se toca.
+- Si alguien rellena el Excel a mano, la app lee lo que haya en la hoja; lo de la hoja manda.
+- La lista de monitores sale de **la hoja de cada mes**: si añades o quitas a alguien en el Excel, la app lo refleja.
+- En la app solo salen los meses que ya tienen hoja + el mes en curso. Cuando alguien guarda en un mes que aún no existe, la hoja se crea **duplicando la del mes anterior** (mismo formato y monitores, columnas de datos vacías). También puedes crearla tú: menú **App incidencias → Crear hoja del mes siguiente** (en la hoja privada).
 
-Ahora mismo el archivo es un **.xlsx** subido a Drive. Para que funcione la app tiene que ser una hoja de Google nativa:
+## Cambio a la hoja privada (una vez)
 
-1. Abre el archivo en Drive → **Archivo → Guardar como Hojas de cálculo de Google**.
-2. Se crea una copia nueva. **Esa** es la que se queda a partir de ahora: compártela con quien la necesite y quita o renombra el .xlsx viejo (por ejemplo `NO USAR – …`) para que nadie siga apuntando ahí.
+1. Crea una hoja de cálculo nueva en tu Drive: **«Configuración app incidencias»**. No la compartas.
+2. En ella: **Extensiones → Apps Script**. Pega `apps-script/Code.gs` en `Código.gs` y crea un archivo HTML `Index` con `apps-script/Index.html`.
+3. Arriba del todo de `Code.gs`, pega la URL de la hoja compartida del registro en `URL_HOJA_REGISTRO = '...'`. Guarda.
+4. Ejecuta **`configurarInicial`** (acepta los permisos). Mueve tus pestañas `_Accesos`, `_Monitores`… de la hoja compartida a la privada **con los códigos que ya tengas** y las borra de la compartida.
+5. Ejecuta **`cargarFestivosCalendario`**: carga los días sin actividad del calendario 26-27.
+6. **Implementar → Nueva implementación → Aplicación web** (Ejecutar como: Yo · Acceso: Cualquier usuario). Copia la URL `/exec` nueva y pásasela a Claude (o pégala en `config.js` del repositorio).
+7. En la **hoja compartida**: Extensiones → Apps Script → **Implementar → Gestionar implementaciones → Archivar**, y después borra el código de `Código.gs` e `Index`. Así nadie con acceso al Excel puede ver el programa.
 
-## 2. Pegar el código
+## Día a día
 
-1. En la hoja nueva: **Extensiones → Apps Script**.
-2. Borra lo que haya en `Código.gs` y pega todo el contenido de `apps-script/Code.gs`.
-3. Pulsa **+ → HTML**, llámalo exactamente `Index` y pega el contenido de `apps-script/Index.html`.
-4. Guarda (icono del disquete).
+- **Códigos** (`_Accesos`): cambia el de cualquiera escribiendo el que quieras en la columna A (sin distinguir mayúsculas ni tildes; que no se repitan). Se aplica en 1 minuto, o al momento con **App incidencias → Aplicar cambios de configuración ya**.
+- **Días fijos** (`_Monitores`): marca L M X J V de cada monitor.
+- **Festivos** (`_Festivos`): ya cargados del calendario; puedes añadir o quitar filas.
+- **Cerrar un mes** (`_Ajustes` → `MESES_CERRADOS`): p. ej. `Octubre; Noviembre`. Ya no se podrá cambiar desde la app.
+- **Enlace directo para cada responsable:** `https://mikelop1991.github.io/HojaIncidencias/?c=CODIGO`
 
-## 3. Crear las hojas de configuración
+## En la app
 
-1. En el editor de Apps Script, elige la función **`configurarInicial`** en el desplegable y pulsa **Ejecutar**. La primera vez Google te pedirá permisos: acéptalos (es tu propio script).
-2. Vuelve a la hoja. Verás hojas nuevas que empiezan por `_`:
-
-| Hoja | Qué tienes que hacer |
-|---|---|
-| **_Accesos** | Un **código** por responsable (ya generados). La fila *Administración* (`*`) eres tú: ves todos los grupos. Alaitz tiene sus dos grupos (Media y Ribera) en un solo código. Si un responsable tiene datos propios en la hoja *Responsables*, la columna D indica su nombre allí; si está vacía, no verá la pestaña «Mis datos» (por ejemplo, Alaitz: si quieres que la vea, añade su fila en *Responsables* y pon el nombre aquí). |
-| **_Monitores** | Lista de monitores por grupo con sus **días fijos L M X J V** (casillas). Los he rellenado a partir de lo que había en octubre y noviembre, **pero muchos monitores no tenían días apuntados**: revisa y marca los días que va cada uno. Para dar de baja a alguien desmarca **Activo**; para un monitor nuevo, añade una fila. |
-| **_Festivos** | Días sin actividad (no salen premarcados). Hay algunos festivos de Navarra puestos; **añade las vacaciones de Navidad y Semana Santa** de la escuela. |
-| **_Ajustes** | `MESES_CERRADOS`: cuando hayas enviado un mes a la asesoría, escribe aquí `Octubre` (o `Octubre; Noviembre`…) y nadie podrá modificarlo desde la app. |
-| _Dias, _Registro | Las rellena la app sola (días concretos marcados e historial de quién guardó qué). No tocar. |
-
-Puedes volver a ejecutar `configurarInicial` cuando quieras (también desde el menú **App incidencias** de la hoja): solo añade lo que falte, nunca borra.
-
-## 4. Publicar
-
-En Apps Script: **Implementar → Nueva implementación → tipo «Aplicación web»**
-- Ejecutar como: **Yo**
-- Quién tiene acceso: **Cualquier usuario**
-
-Copia la URL que termina en **`/exec`**.
-
-> Los responsables **no necesitan cuenta de Google**. La seguridad la da su código: el servidor comprueba en cada petición qué grupos puede ver ese código y rechaza cualquier otro.
-
-> Si más adelante cambias el código: **Implementar → Gestionar implementaciones → editar (lápiz) → Versión: Nueva**. Así la URL no cambia.
-
-## 5. Cómo se instalan los responsables la app
-
-### Opción A — rápida (sin nada más)
-Manda la URL `/exec`. En el móvil la abren y hacen **Compartir → Añadir a pantalla de inicio** (iPhone) o **⋮ → Añadir a pantalla de inicio** (Android). Funciona, pero se abre dentro del navegador y Google muestra un aviso arriba.
-
-### Opción B — app instalada de verdad (recomendada)
-1. En `app/index.html` busca `const API_URL = '';` y pega dentro tu URL `/exec`.
-2. Sube la carpeta `app/` a un alojamiento gratuito: **GitHub Pages** o **Netlify Drop** (arrastrar la carpeta en app.netlify.com/drop).
-3. Manda esa dirección. Al abrirla, el móvil ofrece **Instalar**: queda con su icono, a pantalla completa y sin barras del navegador.
-
-**Enlace directo con código:** si añades `?c=CODIGO` al final de la dirección (p. ej. `https://…/?c=T2L8A4`), el responsable entra directamente sin escribir el código. Después queda recordado en su móvil.
-
-## 6. Cómo funciona para el responsable
-
-1. Elige el **mes** arriba (octubre a junio).
-2. Ve **solo sus monitores**, con sus días fijos y el estado: *Pendiente*, *En hoja* (había datos de antes) o *✓ Hecho*.
-3. Al tocar un monitor sale un **calendario de lunes a viernes** con sus días fijos ya marcados (menos festivos). Desmarca los días que no fue y marca los extra. La app cuenta sola los viajes de cada día de la semana y los escribe en las columnas LUNES…VIERNES.
-4. Si quedan días fijos sin marcar, propone ponerlos como **ausencias** con un toque.
-5. Partidos de liga, sustituciones, km especiales, peajes y observaciones (con atajos «Sustituye a…», «Falta el…»).
-6. Pestaña **Mis datos**: sus km totales, partidos, sustituciones, peajes y observaciones del mes (hoja *Responsables*).
-
-Si un mes todavía no tiene hoja (Diciembre, Enero…), la app la crea sola con la misma cabecera y todos los monitores activos.
+- Arriba, junto al nombre: **● Conectado al Excel** (verde) = todo guardado. Azul = enviando. Rojo = sin conexión (los cambios se guardan en el móvil y se envían solos al volver la cobertura). Al tocarlo, se fuerza la sincronización.
+- La primera vez sale un aviso para **instalar la app** (botón directo en Android; en iPhone explica Compartir → Añadir a pantalla de inicio). También desde el menú ☰ → Instalar.
+- En ordenador los monitores salen en cuadrícula y la ficha se abre como panel lateral (Esc para cerrar).

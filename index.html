@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Incidencias">
 <title>Incidencias Escuela 26-27</title>
-<script src="config.js?v=3"></script>
+<script src="config.js?v=5"></script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
@@ -82,6 +82,8 @@ main{padding:14px 14px calc(90px + env(safe-area-inset-bottom));max-width:680px;
 .estado.guardado{background:var(--verde-suave);color:var(--verde)}
 .estado.pendiente{background:var(--fondo);color:var(--gris)}
 .estado.enhoja{background:var(--ambar-suave);color:var(--ambar)}
+.estado.enviando{background:#e8eefc;color:#1d4ed8}
+.estado.error{background:var(--rojo-suave);color:var(--rojo)}
 .vacio{text-align:center;color:var(--gris);padding:40px 10px}
 
 /* ---------- ficha */
@@ -92,7 +94,7 @@ main{padding:14px 14px calc(90px + env(safe-area-inset-bottom));max-width:680px;
 .fcab .t{flex:1;min-width:0}
 .fcab .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fcab .t span{font-size:13px;color:var(--gris)}
-.fcuerpo{padding:14px 14px calc(110px + env(safe-area-inset-bottom));max-width:680px;margin:0 auto}
+.fcuerpo{padding:14px 14px 10px;max-width:680px;margin:0 auto}
 .tarjeta{background:#fff;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra);margin-bottom:12px}
 .tarjeta h3{margin:0 0 4px;font-size:15px}
 .tarjeta .ayuda{font-size:13px;color:var(--gris);margin:0 0 12px}
@@ -131,19 +133,65 @@ textarea{width:100%;min-height:96px;padding:12px;border:1.5px solid var(--linea)
 .chip{padding:6px 10px;border-radius:999px;background:var(--fondo);font-size:13px;font-weight:600;color:var(--azul)}
 .meta{font-size:12px;color:var(--gris);text-align:center;margin-top:6px}
 
-.pie{position:fixed;left:0;right:0;bottom:0;z-index:3;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--fondo) 70%,rgba(244,245,248,0))}
+.pie{position:sticky;bottom:0;z-index:3;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--fondo) 70%,rgba(244,245,248,0))}
 .pie .btn{max-width:652px;margin:0 auto;box-shadow:0 6px 18px rgba(179,18,31,.3)}
 
 #toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;background:var(--tinta);color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;font-size:14px;transition:.25s;z-index:50;pointer-events:none;max-width:90vw;text-align:center}
+body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 #toast.si{opacity:1;transform:translateX(-50%)}
 #toast.mal{background:var(--rojo)}
 .cargando{display:flex;justify-content:center;padding:40px}
 .spin{width:28px;height:28px;border:3px solid var(--linea);border-top-color:var(--rojo);border-radius:50%;animation:g .8s linear infinite}
 @keyframes g{to{transform:rotate(360deg)}}
+
+.conex{display:inline-flex;align-items:center;gap:6px;margin-top:4px;padding:3px 9px 3px 7px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(255,255,255,.1);color:#fff}
+.conex i{width:8px;height:8px;border-radius:50%;background:#9ca3af;flex:none}
+.conex.ok i{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.25)}
+.conex.envia i{background:#60a5fa;animation:lat 1s infinite}
+.conex.mal i{background:#f87171}
+@keyframes lat{50%{opacity:.3}}
+#instalarBanner{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:15;background:#fff;color:var(--tinta);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px;display:flex;gap:12px;align-items:center;max-width:520px;margin:0 auto}
+#instalarBanner img{width:44px;height:44px;border-radius:10px;flex:none}
+#instalarBanner .tx{flex:1;font-size:14px;line-height:1.35}
+#instalarBanner .tx b{display:block;font-size:15px}
+#instalarBanner .acc{display:flex;flex-direction:column;gap:6px;flex:none}
+#instalarBanner .acc button{padding:9px 14px;border-radius:10px;font-weight:700;font-size:14px}
+#instalarBanner .si{background:var(--rojo);color:#fff}
+#instalarBanner .no{color:var(--gris);font-size:13px!important;padding:4px!important}
 #menu{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.35);display:flex;align-items:flex-end}
 #menu .hoja{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
 #menu .hoja p{margin:0 0 14px;color:var(--gris);font-size:14px}
 #menu .hoja .btn{margin-top:8px}
+
+#fondoFicha{position:fixed;inset:0;z-index:19;background:rgba(15,23,42,.35);opacity:0;pointer-events:none;transition:opacity .25s}
+/* ---------- ordenador / tablet */
+@media (min-width:900px){
+  #login{align-items:center}
+  #login>*{width:100%;max-width:440px}
+  header{padding-left:32px;padding-right:32px}
+  header>*{max-width:1240px;margin-left:auto;margin-right:auto}
+  .tabs{justify-content:flex-start;gap:24px}
+  .tab{flex:none;padding:12px 6px 13px}
+  main{max-width:1240px;padding:22px 32px 40px}
+  .lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}
+  .resumen-fila{display:grid;grid-template-columns:1fr 340px;gap:12px;align-items:start}
+  .resumen-fila .buscar{margin:0;height:100%}
+  .mon:hover{box-shadow:0 0 0 2px var(--azul) inset,var(--sombra)}
+  #ficha{left:auto;width:min(900px,70vw);transform:translateX(100%);box-shadow:-10px 0 40px rgba(0,0,0,.2)}
+  #ficha.abierta{transform:none}
+  #ficha.abierta+#fondoFicha{opacity:1;pointer-events:auto}
+  .fcuerpo{max-width:none;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;padding:18px}
+  .fcuerpo .tarjeta{margin:0}
+  .fcuerpo .tarjeta:first-child{grid-row:span 2}
+  .pie .btn{max-width:340px;margin:0 0 0 auto}
+  .dia{aspect-ratio:auto;height:54px}
+  .dia:hover{filter:brightness(.96)}
+  .mis{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .mis .tarjeta{margin:0}
+  #mGuardar{max-width:340px;margin:14px 0 0 auto}
+  #toast{bottom:28px}
+}
+@media (min-width:900px) and (max-width:1150px){ .fcuerpo{grid-template-columns:1fr} .fcuerpo .tarjeta:first-child{grid-row:auto} }
 </style>
 </head>
 <body>
@@ -165,7 +213,8 @@ textarea{width:100%;min-height:96px;padding:12px;border:1.5px solid var(--linea)
 <section id="app" class="oculto">
   <header>
     <div class="top">
-      <div><div class="hola">Hola,</div><div class="quien" id="quien"></div></div>
+      <div><div class="hola">Hola,</div><div class="quien" id="quien"></div>
+        <button class="conex" id="conexion" aria-live="polite"><i></i><span>Conectando…</span></button></div>
       <button class="icono" id="btnMenu" aria-label="Menú">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
@@ -190,6 +239,7 @@ textarea{width:100%;min-height:96px;padding:12px;border:1.5px solid var(--linea)
   <div class="fcuerpo" id="fCuerpo"></div>
   <div class="pie"><button class="btn" id="guardar">Guardar</button></div>
 </section>
+<div id="fondoFicha"></div>
 
 <div id="menu" class="oculto"><div class="hoja">
   <p id="menuInfo"></p>
@@ -199,6 +249,11 @@ textarea{width:100%;min-height:96px;padding:12px;border:1.5px solid var(--linea)
 </div></div>
 
 <div id="toast"></div>
+<div id="instalarBanner" class="oculto">
+  <img src="icon-192.png" alt="">
+  <div class="tx" id="instTx"></div>
+  <div class="acc"><button class="si oculto" id="instSi">Instalar</button><button class="no" id="instNo">Ahora no</button></div>
+</div>
 
 <script>
 /* ============================================================
@@ -212,7 +267,7 @@ const DIAS_CORTOS = ['L','M','X','J','V'];
 const DIAS_LARGOS = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
 const MESES_NUM = {Octubre:10,Noviembre:11,Diciembre:12,Enero:1,Febrero:2,Marzo:3,Abril:4,Mayo:5,Junio:6};
 
-const S = { codigo:null, user:null, mes:null, grupo:null, tab:'monitores', datosMes:null, filtro:'', ficha:null, misResp:null };
+const S = { codigo:null, user:null, mes:null, grupo:null, tab:'monitores', datos:{}, mis:{}, filtro:'', ficha:null, misResp:null, cola:[] };
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -220,24 +275,28 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const store = {
   get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
   set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} },
-  del(k){ try{ localStorage.removeItem(k) }catch(e){} }
+  del(k){ try{ localStorage.removeItem(k) }catch(e){} },
+  getJ(k){ try{ return JSON.parse(this.get(k)) }catch(e){ return null } },
+  setJ(k,v){ this.set(k, JSON.stringify(v)); }
 };
+function guardarCache(){ if (S.codigo) store.setJ('inc_cache_'+S.codigo, { user:S.user, datos:S.datos, mis:S.mis }); }
+function guardarCola(){ if (S.codigo) store.setJ('inc_cola_'+S.codigo, S.cola); if (typeof estadoConexion === 'function') estadoConexion(); }
 
 /* ---------- llamada a la API: google.script.run si estamos dentro de Apps Script, fetch si no */
 function api(action, params = {}) {
   const body = Object.assign({ action, codigo: S.codigo }, params);
+  const fallo = (m, red) => { const e = new Error(m); e.red = !!red; return e; };
   if (window.google && google.script && google.script.run) {
     return new Promise((ok, ko) => google.script.run
-      .withSuccessHandler(r => { const j = JSON.parse(r); j.ok ? ok(j.data) : ko(new Error(j.error)); })
-      .withFailureHandler(e => ko(new Error(e && e.message || 'Error de conexión')))
+      .withSuccessHandler(r => { const j = JSON.parse(r); j.ok ? ok(j.data) : ko(fallo(j.error)); })
+      .withFailureHandler(e => ko(fallo(e && e.message || 'Error de conexión', true)))
       .apiRun(action, JSON.stringify(body)));
   }
   if (window.API_MOCK) return window.API_MOCK(body);
-  if (!API_URL) return Promise.reject(new Error('La app aún no está conectada a la hoja (falta la URL en config.js).'));
+  if (!API_URL) return Promise.reject(fallo('La app aún no está conectada a la hoja (falta la URL en config.js).'));
   return fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body) })
-    .then(r => r.json())
-    .then(j => { if (!j.ok) throw new Error(j.error); return j.data; })
-    .catch(e => { throw new Error(e.message && !/fetch|network/i.test(e.message) ? e.message : 'Sin conexión. Inténtalo de nuevo.'); });
+    .then(r => r.json(), () => { throw fallo('Sin conexión. Se enviará cuando vuelva la cobertura.', true); })
+    .then(j => { if (!j.ok) throw fallo(j.error); return j.data; });
 }
 
 function toast(msg, mal) {
@@ -246,34 +305,89 @@ function toast(msg, mal) {
 }
 
 /* ======================= LOGIN ======================= */
+function mostrarApp() {
+  const u = S.user;
+  if (!u.meses.includes(S.mes)) S.mes = u.mesActual;
+  if (!u.grupos.includes(S.grupo)) S.grupo = u.grupos[0];
+  if (!u.responsables.includes(S.misResp)) S.misResp = u.responsables[0] || null;
+  $('#login').classList.add('oculto'); $('#app').classList.remove('oculto');
+  $('#quien').textContent = u.persona;
+  $('#tabMis').classList.toggle('oculto', !u.responsables.length);
+  pintarMeses();
+}
+
 async function entrar(codigo, silencioso) {
   const btn = $('#entrar');
   btn.disabled = true; $('#loginErr').textContent = '';
   S.codigo = codigo.trim().toUpperCase();
+  S.mes = store.get('inc_mes'); S.grupo = store.get('inc_grupo');
+  S.cola = store.getJ('inc_cola_'+S.codigo) || [];
+  // 1) si hay datos guardados en el móvil, se ve todo al instante
+  const c = store.getJ('inc_cache_'+S.codigo);
+  if (c && c.user) { S.user = c.user; S.datos = c.datos || {}; S.mis = c.mis || {}; mostrarApp(); pintar(); }
+  // 2) en una sola llamada: comprobar código + datos del mes
   try {
-    const u = await api('login');
-    S.user = u;
-    store.set('inc_codigo', S.codigo);
-    S.mes = store.get('inc_mes') && u.meses.includes(store.get('inc_mes')) ? store.get('inc_mes') : u.mesActual;
-    S.grupo = u.grupos.includes(store.get('inc_grupo')) ? store.get('inc_grupo') : u.grupos[0];
-    S.misResp = u.responsables[0] || null;
-    $('#login').classList.add('oculto'); $('#app').classList.remove('oculto');
-    $('#quien').textContent = u.persona;
-    $('#tabMis').classList.toggle('oculto', !u.responsables.length);
-    pintarMeses(); cargar();
+    const u = await api('inicio', { mes: S.mes });
+    const datos = u.datos; delete u.datos;
+    S.user = u; S.datos[datos.mes] = fusionar(datos);
+    if (!S.mes || !u.meses.includes(S.mes)) S.mes = datos.mes;
+    store.set('inc_codigo', S.codigo); guardarCache();
+    mostrarApp(); pintar(); marcarSinRed(false);
+    enviarCola();
+    precargar();
   } catch (e) {
-    if (!silencioso) $('#loginErr').textContent = e.message;
-    else store.del('inc_codigo');
+    if (e.red && S.user) { marcarSinRed(true); return; }
+    S.user = null; $('#app').classList.add('oculto'); $('#login').classList.remove('oculto');
+    if (!silencioso || !e.red) $('#loginErr').textContent = e.message;
+    if (!e.red) { store.del('inc_codigo'); store.del('inc_cache_'+S.codigo); }
   } finally { btn.disabled = false; }
 }
 $('#entrar').onclick = () => entrar($('#codigo').value);
 $('#codigo').addEventListener('keydown', e => { if (e.key === 'Enter') entrar($('#codigo').value); });
 
+/** Descarga en segundo plano el resto de meses para que cambiar de mes sea instantáneo. */
+async function precargar() {
+  for (const m of S.user.meses.slice().reverse()) {
+    if (S.datos[m] && S.datos[m]._fresco) continue;
+    try { const d = await api('mes', { mes:m }); S.datos[m] = fusionar(d); guardarCache(); } catch (e) { return; }
+  }
+}
+
+/** Mantiene los cambios locales que aún no se han enviado. */
+function fusionar(d) {
+  d._fresco = Date.now();
+  S.cola.filter(x => x.action === 'guardarMonitor' && x.params.mes === d.mes).forEach(x => {
+    const lista = d.grupos[x.params.grupo] || [];
+    const i = lista.findIndex(m => m.key === x.params.key);
+    if (i >= 0 && x.local) lista[i] = Object.assign({}, x.local, { estado:'enviando' });
+  });
+  return d;
+}
+
+/* ---------- indicador de conexión con el Excel */
+let ultimaOk = null, sinRed = false;
+function estadoConexion() {
+  const b = $('#conexion'); if (!b) return;
+  const n = S.cola.length;
+  let cls = '', txt = 'Conectando…';
+  if (sinRed) { cls = 'mal'; txt = n ? `Sin conexión · ${n} pendiente${n>1?'s':''}` : 'Sin conexión'; }
+  else if (n) { cls = 'envia'; txt = `Enviando ${n} cambio${n>1?'s':''}…`; }
+  else if (ultimaOk) { cls = 'ok'; txt = 'Conectado al Excel'; }
+  b.className = 'conex ' + cls; b.querySelector('span').textContent = txt;
+}
+function marcarSinRed(si) { sinRed = !!si; if (!si) ultimaOk = new Date(); estadoConexion(); }
+$('#conexion').onclick = () => {
+  toast(sinRed ? 'Sin conexión con el Excel. Los cambios se guardan en el móvil y se enviarán solos.'
+    : S.cola.length ? 'Enviando cambios al Excel…'
+    : ultimaOk ? 'Todo guardado en el Excel ✓ (última comprobación ' + ultimaOk.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}) + ')' : 'Comprobando conexión…');
+  enviarCola(); cargar(true);
+};
+
 /* ======================= CABECERA ======================= */
 function pintarMeses() {
   const c = $('#meses');
   c.innerHTML = S.user.meses.map(m => `<button class="mes ${m===S.mes?'on':''}" data-m="${m}">${m}${S.user.cerrados.includes(m)?'<span class="cand">🔒</span>':''}</button>`).join('');
-  c.querySelectorAll('.mes').forEach(b => b.onclick = () => { S.mes = b.dataset.m; store.set('inc_mes', S.mes); pintarMeses(); cargar(); });
+  c.querySelectorAll('.mes').forEach(b => b.onclick = () => { S.mes = b.dataset.m; store.set('inc_mes', S.mes); S.filtro=''; pintarMeses(); cargar(); });
   const on = c.querySelector('.on'); if (on) on.scrollIntoView({inline:'center', block:'nearest'});
 }
 document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
@@ -283,15 +397,28 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
 });
 
 /* ======================= LISTA DE MONITORES ======================= */
-async function cargar() {
-  const main = $('#main');
-  main.innerHTML = '<div class="cargando"><div class="spin"></div></div>';
+/** Pinta lo que haya en el móvil y, si hace falta, lo refresca por detrás. */
+function pintar() {
+  if (S.tab === 'mis') return pintarMisDatosDesdeCache();
+  const d = S.datos[S.mes];
+  if (d) { S.datosMes = vista(d); pintarLista(); }
+  else $('#main').innerHTML = '<div class="cargando"><div class="spin"></div></div>';
+}
+function vista(d) { return Object.assign({}, d, { grupo:S.grupo, monitores:(d.grupos[S.grupo] || []) }); }
+
+async function cargar(forzar) {
+  pintar();
+  const mes = S.mes, tab = S.tab, d = S.datos[mes];
+  if (tab === 'mis') return refrescarMisDatos(forzar);
+  if (d && !forzar && Date.now() - d._fresco < 60000) return;     // reciente: no hace falta volver a pedir
   try {
-    if (S.tab === 'mis') return pintarMisDatos(await api('misDatos', { mes:S.mes, responsable:S.misResp }));
-    S.datosMes = await api('mes', { mes:S.mes, grupo:S.grupo });
-    pintarLista();
+    const nuevo = fusionar(await api('mes', { mes }));
+    S.datos[mes] = nuevo; guardarCache(); marcarSinRed(false);
+    if (S.mes === mes && S.tab === 'monitores' && !S.ficha) pintar();
   } catch (e) {
-    main.innerHTML = `<div class="vacio">${esc(e.message)}<br><br><button class="btn sec" onclick="cargar()">Reintentar</button></div>`;
+    if (e.red) marcarSinRed(true);
+    if (!S.datos[mes]) $('#main').innerHTML = `<div class="vacio">${esc(e.message)}<br><br><button class="btn sec" onclick="cargar(true)">Reintentar</button></div>`;
+    else if (!e.red) toast(e.message, true);
   }
 }
 
@@ -301,17 +428,19 @@ function pintarLista() {
   const d = S.datosMes, main = $('#main');
   const grupos = S.user.grupos.length > 1
     ? `<div class="grupos">${S.user.grupos.map(g => `<button class="grupo ${g===S.grupo?'on':''}" data-g="${esc(g)}">${esc(titulo(g))}</button>`).join('')}</div>` : '';
-  const total = d.monitores.length, hechos = d.monitores.filter(m => m.estado === 'guardado').length;
+  const total = d.monitores.length, hechos = d.monitores.filter(m => m.estado === 'guardado' || m.estado === 'enviando').length;
   const f = S.filtro.toLowerCase();
   const lista = d.monitores.filter(m => !f || `${m.nombre} ${m.ap1} ${m.ap2}`.toLowerCase().includes(f));
   main.innerHTML = `
     ${grupos}
     ${d.cerrado ? `<div class="aviso">🔒 ${esc(d.mes)} está cerrado: puedes consultar pero no modificar.</div>` : ''}
+    <div class="resumen-fila">
     <div class="resumen">
       <div class="fila"><span>${esc(d.mes)} ${d.anio}${S.user.grupos.length>1?' · '+esc(titulo(d.grupo)):''}</span><span><b>${hechos}</b> / ${total} revisados</span></div>
       <div class="barra"><i style="width:${total?hechos/total*100:0}%"></i></div>
     </div>
     ${total > 8 ? `<input class="buscar" id="buscar" placeholder="Buscar monitor…" value="${esc(S.filtro)}">` : ''}
+    </div>
     <div class="lista">${lista.map(m => `
       <button class="mon" data-k="${esc(m.key)}">
         <div class="av">${esc(iniciales(m))}</div>
@@ -319,10 +448,10 @@ function pintarLista() {
           <div class="nom">${esc(m.nombre)} ${esc(m.ap1)} ${esc(m.ap2)}</div>
           <div class="sub">${DIAS_CORTOS.map((x,i)=>`<span class="d ${m.fijos.includes(i)?'fijo':''}">${x}</span>`).join('')}</div>
         </div>
-        <span class="estado ${m.estado}">${{guardado:'✓ Hecho',pendiente:'Pendiente',enhoja:'En hoja'}[m.estado]}</span>
+        <span class="estado ${m.estado}">${{guardado:'✓ Hecho',pendiente:'Pendiente',enhoja:'En hoja',enviando:'↑ Enviando',error:'⚠ Error'}[m.estado]}</span>
       </button>`).join('') || '<div class="vacio">No hay monitores.</div>'}
     </div>`;
-  main.querySelectorAll('.grupo').forEach(b => b.onclick = () => { S.grupo = b.dataset.g; store.set('inc_grupo', S.grupo); S.filtro=''; cargar(); });
+  main.querySelectorAll('.grupo').forEach(b => b.onclick = () => { S.grupo = b.dataset.g; store.set('inc_grupo', S.grupo); S.filtro=''; pintar(); });
   main.querySelectorAll('.mon').forEach(b => b.onclick = () => abrirFicha(d.monitores.find(m => m.key === b.dataset.k)));
   const bus = $('#buscar');
   if (bus) bus.oninput = () => { S.filtro = bus.value; const pos = bus.selectionStart; pintarLista(); const nb = $('#buscar'); nb.focus(); nb.setSelectionRange(pos,pos); };
@@ -381,6 +510,8 @@ function cerrarFicha(desdeHistorial) {
   try { if (!desdeHistorial && history.state && history.state.ficha) history.back(); } catch(e) {}
 }
 $('#cerrarFicha').onclick = () => cerrarFicha(false);
+$('#fondoFicha').onclick = () => cerrarFicha(false);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.ficha) cerrarFicha(false); });
 window.addEventListener('popstate', () => { if (S.ficha) cerrarFicha(true); });
 
 function pintarFicha() {
@@ -458,26 +589,70 @@ function paso(f, et, sub) {
 function fmt(v){ return v===null||v===undefined||v==='' ? '' : String(v).replace('.',','); }
 function aNum(v){ if (v===null||v===undefined||v==='') return null; const n = parseFloat(String(v).replace(',','.')); return isNaN(n)?null:n; }
 
-$('#guardar').onclick = async () => {
-  const F = S.ficha, b = $('#guardar');
-  b.disabled = true; b.textContent = 'Guardando…';
-  try {
-    const v = F.v;
-    const r = await api('guardarMonitor', {
-      mes:S.datosMes.mes, grupo:S.datosMes.grupo, key:F.m.key, dias:[...F.sel],
-      partidos: v.partidos||null, ausencias: v.ausencias||null, sust: v.sust||null,
-      km: aNum(v.km), peajes: aNum(v.peajes), obs: v.obs||''
-    });
-    Object.assign(F.m, { dias:[...F.sel].sort((a,b)=>a-b), estado:'guardado', actualizado:r.actualizado, por:S.user.persona });
-    Object.assign(F.m.datos, { conteo:r.conteo, partidos:v.partidos||null, ausencias:v.ausencias||null, sust:v.sust||null, km:aNum(v.km), peajes:aNum(v.peajes), obs:v.obs||'' });
-    F.sucio = false;
-    cerrarFicha(false); pintarLista();
-    toast('Guardado ✓');
-  } catch (e) { toast(e.message, true); }
-  finally { b.disabled = false; b.textContent = 'Guardar'; }
+$('#guardar').onclick = () => {
+  const F = S.ficha, v = F.v, dm = S.datosMes, m = F.m;
+  const dias = [...F.sel].sort((a,b)=>a-b);
+  const conteo = [0,0,0,0,0]; dias.forEach(d => { const w = new Date(dm.anio, dm.mesNum-1, d).getDay(); if (w>=1&&w<=5) conteo[w-1]++; });
+  const params = { mes:dm.mes, grupo:dm.grupo, key:m.key, dias,
+    partidos: v.partidos||null, ausencias: v.ausencias||null, sust: v.sust||null, km: aNum(v.km), peajes: aNum(v.peajes), obs: v.obs||'' };
+  // se actualiza al momento en el móvil...
+  Object.assign(m, { dias, estado:'enviando', actualizado:new Date().toISOString(), por:S.user.persona });
+  Object.assign(m.datos, { conteo, partidos:params.partidos, ausencias:params.ausencias, sust:params.sust, km:params.km, peajes:params.peajes, obs:params.obs });
+  // ...y se envía por detrás (si ya había un envío pendiente del mismo monitor, se sustituye)
+  S.cola = S.cola.filter(x => !(x.action === 'guardarMonitor' && x.params.mes === params.mes && x.params.grupo === params.grupo && x.params.key === params.key));
+  S.cola.push({ action:'guardarMonitor', params, local: JSON.parse(JSON.stringify(m)) });
+  guardarCola(); guardarCache();
+  F.sucio = false; cerrarFicha(false); pintarLista();
+  toast('Guardado ✓');
+  enviarCola();
 };
 
+let enviando = false;
+async function enviarCola() {
+  if (enviando || !S.cola.length) return;
+  enviando = true;
+  try {
+    while (S.cola.length) {
+      const it = S.cola[0];
+      try {
+        const r = await api(it.action, it.params);
+        S.cola.shift(); guardarCola();
+        actualizarEstado(it, 'guardado', r && r.actualizado);
+        marcarSinRed(false);
+      } catch (e) {
+        if (e.red) { marcarSinRed(true); break; }           // sin cobertura: se reintenta luego
+        S.cola.shift(); guardarCola();
+        actualizarEstado(it, 'error'); toast(e.message, true);
+      }
+    }
+  } finally { enviando = false; guardarCache(); }
+}
+function actualizarEstado(it, estado, cuando) {
+  if (it.action !== 'guardarMonitor') return;
+  const d = S.datos[it.params.mes]; if (!d) return;
+  const m = (d.grupos[it.params.grupo] || []).find(x => x.key === it.params.key);
+  if (m) { m.estado = estado; if (cuando) m.actualizado = cuando; }
+  if (!S.ficha && S.tab === 'monitores' && S.mes === it.params.mes) pintar();
+}
+window.addEventListener('online', enviarCola);
+setInterval(enviarCola, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.user) { enviarCola(); cargar(); } });
+
 /* ======================= MIS DATOS ======================= */
+function pintarMisDatosDesdeCache() {
+  const d = S.mis[S.mes + '|' + S.misResp];
+  if (d) pintarMisDatos(d); else $('#main').innerHTML = '<div class="cargando"><div class="spin"></div></div>';
+}
+async function refrescarMisDatos(forzar) {
+  const k = S.mes + '|' + S.misResp, d = S.mis[k];
+  if (d && !forzar && Date.now() - (d._fresco||0) < 60000) return;
+  if (S.cola.some(x => x.action === 'guardarMisDatos' && x.params.mes + '|' + x.params.responsable === k)) return;
+  try {
+    const n = await api('misDatos', { mes:S.mes, responsable:S.misResp }); n._fresco = Date.now();
+    S.mis[k] = n; guardarCache();
+    if (S.tab === 'mis' && S.mes + '|' + S.misResp === k) pintarMisDatos(n);
+  } catch (e) { if (!d) $('#main').innerHTML = `<div class="vacio">${esc(e.message)}</div>`; }
+}
 function pintarMisDatos(d) {
   const main = $('#main'), dis = d.cerrado ? 'disabled' : '';
   const v = { km:d.km, partidos:d.partidos||0, sust:d.sust||0, peajes:d.peajes, obs:d.obs };
@@ -486,7 +661,7 @@ function pintarMisDatos(d) {
   main.innerHTML = `
     ${sel}
     ${d.cerrado ? `<div class="aviso">🔒 ${esc(S.mes)} está cerrado.</div>` : ''}
-    <div class="tarjeta">
+    <div class="mis"><div class="tarjeta">
       <h3>${esc(d.responsable)} · ${esc(S.mes)}</h3>
       <p class="ayuda">Tus propios kilómetros, partidos y sustituciones del mes.</p>
       <div class="campo"><div class="et">Km totales del mes</div><div class="sufijo"><input class="num" id="mKm" inputmode="decimal" value="${fmt(v.km)}" placeholder="0" ${dis}>km</div></div>
@@ -500,7 +675,7 @@ function pintarMisDatos(d) {
       <h3>Observaciones</h3>
       <p class="ayuda">Detalle de viajes, sustituciones, material…</p>
       <textarea id="mObs" ${dis} placeholder="Ej.: 2 viajes Zizur - Ayegui - Zizur (159 km)">${esc(v.obs)}</textarea>
-    </div>
+    </div></div>
     ${d.cerrado ? '' : '<button class="btn" id="mGuardar">Guardar mis datos</button>'}`;
   main.querySelectorAll('.grupo[data-r]').forEach(b => b.onclick = () => { S.misResp = b.dataset.r; cargar(); });
   main.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
@@ -508,28 +683,57 @@ function pintarMisDatos(d) {
     v[f] = Math.max(min, (v[f]||0) + (+b.dataset.delta)); $('#o-'+f).textContent = v[f];
   });
   const g = $('#mGuardar');
-  if (g) g.onclick = async () => {
-    g.disabled = true; g.textContent = 'Guardando…';
-    try {
-      await api('guardarMisDatos', { mes:S.mes, responsable:d.responsable, km:aNum($('#mKm').value), partidos:v.partidos||null, sust:v.sust||null, peajes:aNum($('#mPeajes').value), obs:$('#mObs').value });
-      toast('Guardado ✓');
-    } catch (e) { toast(e.message, true); }
-    finally { g.disabled = false; g.textContent = 'Guardar mis datos'; }
+  if (g) g.onclick = () => {
+    const params = { mes:S.mes, responsable:d.responsable, km:aNum($('#mKm').value), partidos:v.partidos||null, sust:v.sust||null, peajes:aNum($('#mPeajes').value), obs:$('#mObs').value };
+    S.mis[S.mes + '|' + d.responsable] = Object.assign({}, d, params, { _fresco: Date.now() });
+    S.cola = S.cola.filter(x => !(x.action === 'guardarMisDatos' && x.params.mes === params.mes && x.params.responsable === params.responsable));
+    S.cola.push({ action:'guardarMisDatos', params }); guardarCola(); guardarCache();
+    toast('Guardado ✓'); enviarCola();
   };
 }
 
 /* ======================= MENÚ / INSTALAR ======================= */
 let eventoInstalar = null;
-window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); eventoInstalar = e; });
+const esStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const esIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function mostrarBannerInstalar() {
+  if (esStandalone() || (window.google && google.script)) return;
+  const quitado = +store.get('inc_inst_no') || 0;
+  if (Date.now() - quitado < 3 * 864e5) return;                 // si dijo "ahora no", volver a sugerir en 3 días
+  if (eventoInstalar) {
+    $('#instTx').innerHTML = '<b>Instala la app</b>Ábrela desde la pantalla de inicio como una app más.';
+    $('#instSi').classList.remove('oculto');
+  } else if (esIOS()) {
+    const safari = /safari/i.test(navigator.userAgent) && !/crios|fxios|edgios/i.test(navigator.userAgent);
+    $('#instTx').innerHTML = safari
+      ? '<b>Instala la app en tu iPhone</b>Pulsa <b style="display:inline">Compartir</b> <svg width="14" height="16" viewBox="0 0 14 18" style="vertical-align:-2px"><path d="M7 1v11M3 5l4-4 4 4M1 9v8h12V9" fill="none" stroke="#1d4ed8" stroke-width="1.8"/></svg> abajo y luego <b style="display:inline">«Añadir a pantalla de inicio»</b>.'
+      : '<b>Instala la app en tu iPhone</b>Abre este enlace en <b style="display:inline">Safari</b> y pulsa Compartir → «Añadir a pantalla de inicio».';
+    $('#instSi').classList.add('oculto');
+  } else return;
+  $('#instalarBanner').classList.remove('oculto'); document.body.classList.add('conBanner');
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); eventoInstalar = e; mostrarBannerInstalar(); });
+window.addEventListener('appinstalled', () => { $('#instalarBanner').classList.add('oculto'); eventoInstalar = null; });
+$('#instSi').onclick = async () => { $('#instalarBanner').classList.add('oculto'); document.body.classList.remove('conBanner'); if (eventoInstalar) { eventoInstalar.prompt(); eventoInstalar = null; } };
+$('#instNo').onclick = () => { $('#instalarBanner').classList.add('oculto'); document.body.classList.remove('conBanner'); store.set('inc_inst_no', Date.now()); };
+setTimeout(mostrarBannerInstalar, 1200);
 $('#btnMenu').onclick = () => {
   $('#menuInfo').innerHTML = `Conectado como <b>${esc(S.user.persona)}</b>${S.user.admin?' (administración)':''}.<br>Grupos: ${S.user.grupos.map(g=>esc(titulo(g))).join(', ')}`;
-  $('#instalar').classList.toggle('oculto', !eventoInstalar);
+  $('#instalar').classList.toggle('oculto', esStandalone());
   $('#menu').classList.remove('oculto');
 };
 $('#menu').onclick = e => { if (e.target.id === 'menu') $('#menu').classList.add('oculto'); };
-$('#recargar').onclick = () => { $('#menu').classList.add('oculto'); cargar(); };
-$('#instalar').onclick = async () => { $('#menu').classList.add('oculto'); if (eventoInstalar) { eventoInstalar.prompt(); eventoInstalar = null; } };
-$('#salir').onclick = () => { store.del('inc_codigo'); location.reload(); };
+$('#recargar').onclick = () => { $('#menu').classList.add('oculto'); enviarCola(); cargar(true); };
+$('#instalar').onclick = async () => {
+  $('#menu').classList.add('oculto');
+  if (eventoInstalar) { eventoInstalar.prompt(); eventoInstalar = null; return; }
+  store.del('inc_inst_no'); mostrarBannerInstalar();
+  if ($('#instalarBanner').classList.contains('oculto')) toast('Usa el menú del navegador → «Añadir a pantalla de inicio»');
+};
+$('#salir').onclick = () => {
+  if (S.cola.length && !confirm('Hay ' + S.cola.length + ' cambio(s) sin enviar todavía. ¿Cerrar sesión igualmente?')) return;
+  store.del('inc_codigo'); store.del('inc_cache_'+S.codigo); store.del('inc_cola_'+S.codigo); location.reload();
+};
 
 /* ======================= ARRANQUE ======================= */
 if ('serviceWorker' in navigator && location.protocol === 'https:' && !(window.google && google.script)) {
