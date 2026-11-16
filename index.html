@@ -8,18 +8,42 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Incidencias">
 <title>Incidencias Escuela 26-27</title>
-<script src="config.js?v=7"></script>
+<script src="config.js?v=8"></script>
 <link rel="preconnect" href="https://script.google.com" crossorigin>
 <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
+<script>
+/* tema: automático (según el móvil) / claro / oscuro — se aplica antes de pintar para no parpadear */
+(function(){
+  function aplicar(){
+    var t = 'auto'; try { t = localStorage.getItem('inc_tema') || 'auto'; } catch(e){}
+    var osc = t === 'oscuro' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.setAttribute('data-tema', osc ? 'oscuro' : 'claro');
+    var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', osc ? '#0a0f1b' : '#b3121f');
+  }
+  window.aplicarTema = aplicar; aplicar();
+  if (window.matchMedia) try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', aplicar); } catch(e){}
+})();
+</script>
 <style>
 :root{
   --rojo:#b3121f; --rojo-2:#d4202f; --rojo-suave:#fdecee;
   --azul:#16213a; --tinta:#1b1f29; --gris:#6b7280; --linea:#e6e8ee; --fondo:#f4f5f8; --blanco:#fff;
   --verde:#15803d; --verde-suave:#e7f6ec; --ambar:#b45309; --ambar-suave:#fff4e0;
   --radio:16px; --sombra:0 1px 2px rgba(16,24,40,.06),0 4px 14px rgba(16,24,40,.06);
+  --card:#fff; --pista:#f1f2f5; --borde-fijo:#c9cfdd; --texto-azul:var(--azul); --cab:#16213a;
+  --c-aus:#c8102e; --c-sus:#2f5aa8; --toast:#1b1f29; --rec-bg:#fff4e0; --rec-tx:#7c4a03; --rec-tx2:#92600a;
+  color-scheme:light;
+}
+:root[data-tema="oscuro"]{
+  --fondo:#0d1220; --card:#161e30; --tinta:#e7eaf1; --gris:#98a1b3; --linea:#283149; --pista:#222b40; --borde-fijo:#3a4562;
+  --azul:#2d4a86; --texto-azul:#b9c9f2; --cab:#0a0f1b; --blanco:#161e30;
+  --rojo-suave:rgba(229,72,77,.16); --verde:#3ccf74; --verde-suave:rgba(60,207,116,.14); --ambar:#f5b44a; --ambar-suave:rgba(245,180,74,.14);
+  --c-aus:#e5484d; --c-sus:#5b8def; --toast:#2a3349; --rec-bg:rgba(245,180,74,.14); --rec-tx:#f7cf86; --rec-tx2:#e2b66a;
+  --sombra:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.25);
+  color-scheme:dark;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--fondo);color:var(--tinta);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
@@ -38,18 +62,18 @@ button{cursor:pointer;border:0;background:none}
 #login .marca{font-weight:800;letter-spacing:.08em;font-size:13px;opacity:.85;text-transform:uppercase}
 #login h1{font-size:34px;line-height:1.1;margin:8px 0 6px}
 #login p{opacity:.85;margin:0 0 28px}
-#login .caja{background:#fff;color:var(--tinta);border-radius:20px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+#login .caja{background:var(--card);color:var(--tinta);border-radius:20px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
 #login label{font-size:13px;font-weight:600;color:var(--gris)}
 #codigo{width:100%;margin:8px 0 14px;padding:14px 16px;border:2px solid var(--linea);border-radius:12px;font-size:24px;letter-spacing:.3em;text-transform:uppercase;text-align:center;outline:none}
 #codigo:focus{border-color:var(--rojo)}
 .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;border-radius:14px;background:var(--rojo);color:#fff;font-weight:700;font-size:17px}
 .btn:active{transform:scale(.99);background:#9a0f1a}
 .btn[disabled]{opacity:.5}
-.btn.sec{background:var(--blanco);color:var(--tinta);border:1.5px solid var(--linea)}
+.btn.sec{background:var(--card);color:var(--tinta);border:1.5px solid var(--linea)}
 .err{color:var(--rojo);font-size:14px;min-height:20px;margin-top:10px;text-align:center}
 
 /* ---------- cabecera */
-header{position:sticky;top:0;z-index:5;background:var(--azul);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 0}
+header{position:sticky;top:0;z-index:5;background:var(--cab);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 0}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .yo{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.85);flex:none;background:#2a3655}
 .quienwrap{display:flex;align-items:center;gap:12px}
@@ -60,7 +84,7 @@ header{position:sticky;top:0;z-index:5;background:var(--azul);color:#fff;padding
 .meses{display:flex;gap:8px;overflow-x:auto;padding:14px 0 12px;scrollbar-width:none;scroll-snap-type:x proximity}
 .meses::-webkit-scrollbar{display:none}
 .mes{flex:none;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.1);color:#fff;font-weight:600;font-size:14px;scroll-snap-align:center}
-.mes.on{background:#fff;color:var(--azul)}
+.mes.on{background:var(--card);color:var(--texto-azul)}
 .mes .cand{font-size:11px;margin-left:4px;opacity:.7}
 .tabs{display:flex;gap:4px}
 .tab{flex:1;padding:12px 0 13px;color:rgba(255,255,255,.65);font-weight:600;border-bottom:3px solid transparent}
@@ -68,25 +92,25 @@ header{position:sticky;top:0;z-index:5;background:var(--azul);color:#fff;padding
 
 main{padding:14px 14px calc(90px + env(safe-area-inset-bottom));max-width:680px;margin:0 auto}
 .grupos{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.grupo{padding:8px 12px;border-radius:10px;background:#fff;border:1.5px solid var(--linea);font-size:13px;font-weight:600}
+.grupo{padding:8px 12px;border-radius:10px;background:var(--card);border:1.5px solid var(--linea);font-size:13px;font-weight:600}
 .grupo.on{border-color:var(--rojo);color:var(--rojo);background:var(--rojo-suave)}
-.resumen{background:#fff;border-radius:var(--radio);padding:14px 16px;box-shadow:var(--sombra);margin-bottom:12px}
+.resumen{background:var(--card);border-radius:var(--radio);padding:14px 16px;box-shadow:var(--sombra);margin-bottom:12px}
 .resumen .fila{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:var(--gris)}
 .resumen b{color:var(--tinta);font-size:20px}
 .barra{height:8px;border-radius:99px;background:var(--linea);margin-top:10px;overflow:hidden}
 .barra i{display:block;height:100%;background:var(--verde);border-radius:99px;transition:width .3s}
 .aviso{background:var(--ambar-suave);color:var(--ambar);border-radius:12px;padding:10px 12px;font-size:14px;margin-bottom:12px}
-.buscar{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--linea);background:#fff;margin-bottom:10px;outline:none}
+.buscar{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--linea);background:var(--card);margin-bottom:10px;outline:none}
 .buscar:focus{border-color:var(--azul)}
 
 .lista{display:flex;flex-direction:column;gap:8px}
-.mon{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border-radius:14px;padding:12px 14px;box-shadow:var(--sombra)}
-.mon:active{background:#fafafa}
-.av{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:700;background:var(--fondo);color:var(--azul);font-size:15px}
+.mon{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:var(--sombra)}
+.mon:active{filter:brightness(.97)}
+.av{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:700;background:var(--fondo);color:var(--texto-azul);font-size:15px}
 .mon .info{flex:1;min-width:0}
 .mon .nom{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mon .sub{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
-.d{font-size:11px;font-weight:700;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:var(--fondo);color:#9aa0ab}
+.d{font-size:11px;font-weight:700;width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:var(--fondo);color:var(--gris)}
 .d.fijo{background:var(--azul);color:#fff}
 .estado{flex:none;font-size:12px;font-weight:700;padding:5px 9px;border-radius:999px}
 .estado.guardado{background:var(--verde-suave);color:var(--verde)}
@@ -99,22 +123,22 @@ main{padding:14px 14px calc(90px + env(safe-area-inset-bottom));max-width:680px;
 /* ---------- ficha */
 #ficha{position:fixed;inset:0;z-index:20;background:var(--fondo);overflow-y:auto;transform:translateY(100%);visibility:hidden;transition:transform .25s ease,visibility 0s linear .25s;}
 #ficha.abierta{transform:none;visibility:visible;transition:transform .25s ease}
-.fcab{position:sticky;top:0;z-index:2;background:#fff;padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--linea)}
+.fcab{position:sticky;top:0;z-index:2;background:var(--card);padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--linea)}
 .fcab .icono{background:var(--fondo);color:var(--tinta)}
 .fcab .t{flex:1;min-width:0}
 .fcab .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fcab .t span{font-size:13px;color:var(--gris)}
 .fcuerpo{padding:14px 14px 10px;max-width:680px;margin:0 auto}
-.tarjeta{background:#fff;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra);margin-bottom:12px}
+.tarjeta{background:var(--card);border-radius:var(--radio);padding:16px;box-shadow:var(--sombra);margin-bottom:12px}
 .tarjeta h3{margin:0 0 4px;font-size:15px}
 .tarjeta .ayuda{font-size:13px;color:var(--gris);margin:0 0 12px}
 .cal{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .cal .h{text-align:center;font-size:12px;font-weight:700;color:var(--gris);padding:2px 0 4px}
-.cal .h.fijo{color:var(--azul)}
-.dia{aspect-ratio:1/0.9;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:16px;background:var(--fondo);color:#8a909c;border:2px solid transparent;position:relative}
-.dia.fijo{border-color:#c9cfdd;color:var(--azul)}
+.cal .h.fijo{color:var(--texto-azul)}
+.dia{aspect-ratio:1/0.9;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:16px;background:var(--fondo);color:var(--gris);border:2px solid transparent;position:relative}
+.dia.fijo{border-color:var(--borde-fijo);color:var(--texto-azul)}
 .dia.on{background:var(--azul);border-color:var(--azul);color:#fff}
-.dia.fest{background:repeating-linear-gradient(135deg,#f4f5f8 0 6px,#eceef3 6px 12px);color:#b3b8c2}
+.dia.fest{background:repeating-linear-gradient(135deg,var(--fondo) 0 6px,var(--linea) 6px 12px);color:var(--gris);opacity:.8}
 .dia.fest.on{background:var(--azul);color:#fff}
 .dia small{font-size:9px;font-weight:600;line-height:1;margin-top:2px;opacity:.8}
 .dia.hoy::after{content:"";position:absolute;bottom:5px;width:5px;height:5px;border-radius:50%;background:var(--rojo-2)}
@@ -132,21 +156,21 @@ main{padding:14px 14px calc(90px + env(safe-area-inset-bottom));max-width:680px;
 .campo .et{font-weight:600;font-size:15px}
 .campo .et small{display:block;font-weight:400;color:var(--gris);font-size:12px}
 .paso{display:flex;align-items:center;gap:4px;flex:none}
-.paso button{width:40px;height:40px;border-radius:12px;background:var(--fondo);font-size:22px;font-weight:700;color:var(--azul)}
-.paso button:active{background:#e3e6ee}
+.paso button{width:40px;height:40px;border-radius:12px;background:var(--fondo);font-size:22px;font-weight:700;color:var(--texto-azul)}
+.paso button:active{filter:brightness(.92)}
 .paso output{min-width:36px;text-align:center;font-size:20px;font-weight:700}
 .num{width:110px;padding:10px 12px;border:1.5px solid var(--linea);border-radius:12px;text-align:right;font-size:17px;font-weight:600;outline:none}
 .num:focus,textarea:focus{border-color:var(--azul)}
 .sufijo{display:flex;align-items:center;gap:6px;color:var(--gris);font-weight:600}
 textarea{width:100%;min-height:96px;padding:12px;border:1.5px solid var(--linea);border-radius:12px;resize:vertical;outline:none}
 .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
-.chip{padding:6px 10px;border-radius:999px;background:var(--fondo);font-size:13px;font-weight:600;color:var(--azul)}
+.chip{padding:6px 10px;border-radius:999px;background:var(--fondo);font-size:13px;font-weight:600;color:var(--texto-azul)}
 .meta{font-size:12px;color:var(--gris);text-align:center;margin-top:6px}
 
-.pie{position:sticky;bottom:0;z-index:3;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--fondo) 70%,rgba(244,245,248,0))}
+.pie{position:sticky;bottom:0;z-index:3;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--fondo) 70%,transparent)}
 .pie .btn{max-width:652px;margin:0 auto;box-shadow:0 6px 18px rgba(179,18,31,.3)}
 
-#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;background:var(--tinta);color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;font-size:14px;transition:.25s;z-index:50;pointer-events:none;max-width:90vw;text-align:center}
+#toast{color:#fff!important;position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);opacity:0;background:var(--toast);color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;font-size:14px;transition:.25s;z-index:50;pointer-events:none;max-width:90vw;text-align:center}
 body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 #toast.si{opacity:1;transform:translateX(-50%)}
 #toast.mal{background:var(--rojo)}
@@ -160,7 +184,7 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 .conex.envia i{background:#60a5fa;animation:lat 1s infinite}
 .conex.mal i{background:#f87171}
 @keyframes lat{50%{opacity:.3}}
-#instalarBanner{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:15;background:#fff;color:var(--tinta);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px;display:flex;gap:12px;align-items:center;max-width:520px;margin:0 auto}
+#instalarBanner{color:var(--tinta)!important;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:15;background:var(--card);color:var(--tinta);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:14px;display:flex;gap:12px;align-items:center;max-width:520px;margin:0 auto}
 #instalarBanner img{width:44px;height:44px;border-radius:10px;flex:none}
 #instalarBanner .tx{flex:1;font-size:14px;line-height:1.35}
 #instalarBanner .tx b{display:block;font-size:15px}
@@ -169,7 +193,10 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 #instalarBanner .si{background:var(--rojo);color:#fff}
 #instalarBanner .no{color:var(--gris);font-size:13px!important;padding:4px!important}
 #menu{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.35);display:flex;align-items:flex-end}
-#menu .hoja{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+#menu .hoja{background:var(--card);color:var(--tinta);width:100%;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+.temas{display:flex;gap:6px;background:var(--fondo);padding:4px;border-radius:12px;margin-bottom:6px}
+.temas button{flex:1;padding:10px 4px;border-radius:9px;font-size:13px;font-weight:700;color:var(--gris)}
+.temas button.on{background:var(--card);color:var(--tinta);box-shadow:var(--sombra)}
 #menu .hoja p{margin:0 0 14px;color:var(--gris);font-size:14px}
 #menu .hoja .btn{margin-top:8px}
 
@@ -205,16 +232,16 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 @media (min-width:900px) and (max-width:1150px){ .fcuerpo{grid-template-columns:1fr} .fcuerpo .tarjeta:first-child{grid-row:auto} }
 
 /* ---------- confirmación rápida y recordatorios */
-.rapido{flex:none;width:44px;height:44px;border-radius:50%;border:2px solid #cfd5e1;color:#9aa3b2;font-size:20px;font-weight:800;display:grid;place-items:center;background:#fff}
+.rapido{flex:none;width:44px;height:44px;border-radius:50%;border:2px solid var(--borde-fijo);color:var(--gris);font-size:20px;font-weight:800;display:grid;place-items:center;background:var(--card)}
 .rapido:hover,.rapido:active{border-color:var(--verde);color:#fff;background:var(--verde)}
 .lote-ok{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:var(--verde-suave);color:var(--verde);border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:14px}
 .lote-ok .lote-btn{flex:none;background:var(--verde);color:#fff;font-weight:800;padding:9px 12px;border-radius:10px;font-size:13px}
-.recordatorio{display:flex;gap:10px;align-items:flex-start;background:#fff4e0;color:#7c4a03;border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:14px;border-left:4px solid #f59e0b}
-.recordatorio span{color:#92600a;font-size:13px}
+.recordatorio{display:flex;gap:10px;align-items:flex-start;background:var(--rec-bg);color:var(--rec-tx);border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:14px;border-left:4px solid #f59e0b}
+.recordatorio span{color:var(--rec-tx2);font-size:13px}
 .contactos{display:flex;flex-direction:column;gap:8px}
 .contacto{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--linea)}
 .contacto:first-child{border-top:0}
-.contacto img,.contacto .ini{width:38px;height:38px;border-radius:50%;object-fit:cover;flex:none;background:var(--fondo);display:grid;place-items:center;font-weight:700;color:var(--azul);font-size:13px}
+.contacto img,.contacto .ini{width:38px;height:38px;border-radius:50%;object-fit:cover;flex:none;background:var(--fondo);display:grid;place-items:center;font-weight:700;color:var(--texto-azul);font-size:13px}
 .contacto .nm{flex:1;min-width:0}
 .contacto .nm b{display:block;font-size:14px}
 .contacto .nm span{font-size:12px;color:var(--gris)}
@@ -225,16 +252,18 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 .recs summary::after{content:"›";font-size:22px;color:var(--gris);transform:rotate(90deg);transition:transform .2s;margin-left:4px}
 .recs[open] summary::after{transform:rotate(-90deg)}
 .recs summary span:first-child{flex:1}
-.pill-pend{font-size:12px;font-weight:800;color:#92600a;background:#fff4e0;padding:6px 10px;border-radius:999px}
+.pill-pend{font-size:12px;font-weight:800;color:var(--rec-tx2);background:var(--rec-bg);padding:6px 10px;border-radius:999px}
 .al-dia{flex:none;font-size:12px;font-weight:800;color:var(--verde);background:var(--verde-suave);padding:6px 10px;border-radius:999px}
 /* ---------- cabecera del informe */
-.inf-cab{display:flex;align-items:center;gap:14px;background:#fff;border-radius:var(--radio);padding:14px 16px;box-shadow:var(--sombra);margin-bottom:12px;position:relative;overflow:hidden}
+.inf-cab{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:var(--radio);padding:14px 16px;box-shadow:var(--sombra);margin-bottom:12px;position:relative;overflow:hidden}
 .inf-cab::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:linear-gradient(90deg,var(--rojo) 0 50%,#16213a 50% 100%)}
+:root[data-tema="oscuro"] .inf-cab::after{background:linear-gradient(90deg,var(--c-aus) 0 50%,#5b8def 50% 100%)}
+:root[data-tema="oscuro"] .inf-escudo,:root[data-tema="oscuro"] .inf-fo{filter:drop-shadow(0 0 1px rgba(255,255,255,.5))}
 .inf-fo{height:52px;width:auto;flex:none}
 .inf-escudo{height:52px;width:auto;flex:none;margin-left:auto}
 .inf-tit{min-width:0}
 .inf-kicker{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--rojo)}
-.inf-tit h1{margin:2px 0 2px;font-size:22px;line-height:1.1;color:var(--azul);letter-spacing:-.01em}
+.inf-tit h1{margin:2px 0 2px;font-size:22px;line-height:1.1;color:var(--texto-azul);letter-spacing:-.01em}
 .inf-tit p{margin:0;font-size:13px;color:var(--gris)}
 .graf h3 span,.tarjeta h3 span{display:inline-flex;align-items:center;gap:8px}
 em.num{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;line-height:1;border-radius:7px;background:var(--azul);color:#fff;font-size:12px;font-weight:800;flex:none}
@@ -248,10 +277,10 @@ em.num{font-style:normal;display:inline-flex;align-items:center;justify-content:
 /* ---------- resumen (administración) */
 .periodos{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px}
 .periodos::-webkit-scrollbar{display:none}
-.per{flex:none;padding:7px 12px;border-radius:999px;background:#fff;border:1.5px solid var(--linea);font-size:13px;font-weight:700;color:var(--tinta)}
+.per{flex:none;padding:7px 12px;border-radius:999px;background:var(--card);border:1.5px solid var(--linea);font-size:13px;font-weight:700;color:var(--tinta)}
 .per.on{background:var(--azul);border-color:var(--azul);color:#fff}
 .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
-.kpi{background:#fff;border-radius:14px;padding:12px 14px;box-shadow:var(--sombra);position:relative;overflow:hidden}
+.kpi{background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:var(--sombra);position:relative;overflow:hidden}
 .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--k,var(--azul))}
 .kpi .n{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
 .kpi .t{font-size:12px;color:var(--gris);font-weight:600;margin-top:2px}
@@ -274,9 +303,9 @@ em.num{font-style:normal;display:inline-flex;align-items:center;justify-content:
 .tabla tr:last-child td{border-bottom:0}
 .tabla tfoot td{font-weight:800;border-top:2px solid var(--linea)}
 .tscroll{overflow-x:auto}
-.btnpdf{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:14px;background:var(--azul);color:#fff;font-weight:700;margin:4px 0 12px}
+.btnpdf{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border-radius:14px;background:var(--azul);border:1px solid rgba(255,255,255,.08);color:#fff;font-weight:700;margin:4px 0 12px}
 .solo-print{display:none}
-#tip{position:fixed;z-index:60;pointer-events:none;background:var(--tinta);color:#fff;font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;opacity:0;transition:opacity .12s;max-width:240px;line-height:1.35}
+#tip{position:fixed;z-index:60;pointer-events:none;background:var(--toast);color:#fff;font-size:12px;font-weight:600;padding:7px 10px;border-radius:8px;opacity:0;transition:opacity .12s;max-width:240px;line-height:1.35}
 #tip.si{opacity:1}
 @media (min-width:900px){
   .kpis{grid-template-columns:repeat(6,1fr)}
@@ -287,6 +316,25 @@ em.num{font-style:normal;display:inline-flex;align-items:center;justify-content:
   .cab-res{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
   .cab-res .periodos{margin:0}
 }
+/* ---------- maquetación para generar el PDF dentro de la app (iPhone) */
+body.modo-pdf{overflow:hidden}
+body.modo-pdf main{width:1060px!important;max-width:none!important;padding:0!important;margin:0!important;background:#fff}
+body.modo-pdf .noprint,body.modo-pdf #tip{display:none!important}
+body.modo-pdf .kpis{grid-template-columns:repeat(3,1fr)!important}
+body.modo-pdf .rejilla{display:grid!important;grid-template-columns:1fr 1fr;gap:14px}
+body.modo-pdf .rejilla .tarjeta{margin:0}
+body.modo-pdf .rejilla .ancha{grid-column:1/-1}
+body.modo-pdf .tarjeta,body.modo-pdf .kpi{box-shadow:none!important;border:1px solid #e6e8ee}
+body.modo-pdf .inf-cab{box-shadow:none;border:0;padding:4px 0 16px;border-radius:0}
+body.modo-pdf .inf-tit h1{font-size:32px}
+body.modo-pdf .inf-fo,body.modo-pdf .inf-escudo{height:76px;display:block}
+body.modo-pdf .tscroll{overflow:visible}
+#pdfListo{position:fixed;inset:0;z-index:70;background:rgba(10,15,27,.55);display:flex;align-items:flex-end;justify-content:center}
+#pdfListo .hoja{background:var(--card);color:var(--tinta);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));text-align:center}
+#pdfListo .ic{width:56px;height:56px;border-radius:16px;background:var(--rojo-suave);color:var(--rojo);display:grid;place-items:center;font-weight:900;margin:0 auto 10px;font-size:13px}
+#pdfListo h3{margin:0 0 4px}#pdfListo p{margin:0 0 16px;color:var(--gris);font-size:14px}
+#pdfListo .btn{margin-top:8px}
+@media (min-width:900px){#pdfListo{align-items:center}#pdfListo .hoja{border-radius:20px}}
 @media print{
   @page{size:A4;margin:12mm 12mm 16mm}
   html,body,#app{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -362,6 +410,9 @@ em.num{font-style:normal;display:inline-flex;align-items:center;justify-content:
 
 <div id="menu" class="oculto"><div class="hoja">
   <p id="menuInfo"></p>
+  <div class="temas" role="radiogroup" aria-label="Tema">
+    <button data-tema="auto">🌓 Automático</button><button data-tema="claro">☀️ Día</button><button data-tema="oscuro">🌙 Noche</button>
+  </div>
   <button class="btn sec" id="recargar">Actualizar datos</button>
   <button class="btn sec oculto" id="instalar">Instalar en el móvil</button>
   <button class="btn" id="salir">Cerrar sesión</button>
@@ -748,7 +799,7 @@ function pintarFicha() {
       <div class="conteo">${DIAS_CORTOS.map((x,i)=>`<div><b>${conteo[i]}</b>${x}</div>`).join('')}</div>
       ${sinMarcar && !dm.cerrado ? `<div class="pista">${sinMarcar} día${sinMarcar>1?'s':''} fijo${sinMarcar>1?'s':''} sin marcar
           ${(F.v.ausencias||0) !== sinMarcar ? `<button id="usarAus">Poner en ausencias</button>`:''}</div>` : ''}
-      <div class="leyenda"><span><i style="background:var(--azul)"></i>Ha ido</span><span><i style="border:2px solid #c9cfdd;background:var(--fondo)"></i>Día fijo</span><span><i style="background:repeating-linear-gradient(135deg,#f4f5f8 0 3px,#dfe2e8 3px 6px)"></i>Festivo</span></div>
+      <div class="leyenda"><span><i style="background:var(--azul)"></i>Ha ido</span><span><i style="border:2px solid var(--borde-fijo);background:var(--fondo)"></i>Día fijo</span><span><i style="background:repeating-linear-gradient(135deg,var(--fondo) 0 3px,var(--linea) 3px 6px)"></i>Festivo</span></div>
     </div>
 
     <div class="tarjeta">
@@ -915,7 +966,7 @@ function pintarMisDatos(d) {
 
 
 /* ======================= RESUMEN (solo administración) ======================= */
-const C_AUS = '#c8102e', C_SUS = '#2f5aa8';
+const C_AUS = 'var(--c-aus)', C_SUS = 'var(--c-sus)';
 const MES_CORTO = {Octubre:'Oct',Noviembre:'Nov',Diciembre:'Dic',Enero:'Ene',Febrero:'Feb',Marzo:'Mar',Abril:'Abr',Mayo:'May',Junio:'Jun'};
 const nf = (n, d=0) => (n||0).toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
 S.periodo = 'Temporada'; S.metricaZona = 'aus';
@@ -965,7 +1016,7 @@ function pintarResumen() {
   const top = A.mons.filter(x=>x.aus>0).sort((a,b)=>b.aus-a.aus || b.sust-a.sust).slice(0,10)
     .map(x => ({ etiqueta:x.n, sub:titulo(x.g), valor:x.aus, tip:`<b>${esc(x.n)}</b><br>${esc(titulo(x.g))}<br>${x.aus} ausencias · ${x.sust} sustituciones` }));
   // anchos reales para que los gráficos no se deformen
-  const esc2 = innerWidth >= 900, mw = $('#main').clientWidth - (esc2 ? 64 : 28);
+  const esc2 = S._anchoPDF ? true : innerWidth >= 900, mw = S._anchoPDF || ($('#main').clientWidth - (esc2 ? 64 : 28));
   S._wAncho = Math.max(280, mw - 32); S._wMitad = Math.max(280, esc2 ? (mw - 14) / 2 - 32 : mw - 32);
   const nomPer = S.periodo === 'Temporada' ? 'Temporada 2026-27' : `${S.periodo} ${R.meses.indexOf(S.periodo) >= 0 && MESES_NUM[S.periodo] >= 9 ? 2026 : 2027}`;
 
@@ -985,10 +1036,10 @@ function pintarResumen() {
     <div class="kpis">
       ${kpi(nf(A.t.aus),'Ausencias', `${nf(tasa,1)} % de los viajes`, C_AUS)}
       ${kpi(nf(A.t.sust),'Sustituciones', '', C_SUS)}
-      ${kpi(`${A.t.conInc}<small style="font-size:14px;color:var(--gris)">/${A.t.monit}</small>`,'Monitores con incidencias','', '#16213a')}
-      ${kpi(nf(A.t.part),'Partidos de liga', '', '#16213a')}
-      ${kpi(nf(A.t.km + kmResp),'Km totales', `Monitores ${nf(A.t.km)} · Resp. ${nf(kmResp)}`, '#16213a')}
-      ${kpi(nf(A.t.peajes + peajesResp,2)+' €','Peajes', '', '#16213a')}
+      ${kpi(`${A.t.conInc}<small style="font-size:14px;color:var(--gris)">/${A.t.monit}</small>`,'Monitores con incidencias','', 'var(--texto-azul)')}
+      ${kpi(nf(A.t.part),'Partidos de liga', '', 'var(--texto-azul)')}
+      ${kpi(nf(A.t.km + kmResp),'Km totales', `Monitores ${nf(A.t.km)} · Resp. ${nf(kmResp)}`, 'var(--texto-azul)')}
+      ${kpi(nf(A.t.peajes + peajesResp,2)+' €','Peajes', '', 'var(--texto-azul)')}
     </div>
     <div class="rejilla">
       <div class="tarjeta graf ancha">
@@ -1025,7 +1076,74 @@ function pintarResumen() {
   main.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { S.periodo = b.dataset.p; pintarResumen(); });
   const rc = main.querySelector('.recs'); if (rc) rc.ontoggle = () => { S._recsAbierto = rc.open; };
   main.querySelectorAll('[data-met]').forEach(b => b.onclick = () => { S.metricaZona = b.dataset.met; pintarResumen(); });
-  $('#btnPdf').onclick = () => window.print();
+  $('#btnPdf').onclick = () => exportarPDF(nomPer);
+}
+
+/* ---------- informe en PDF ----------
+   En ordenador y Android se usa la impresión del navegador (mejor calidad).
+   En iPhone (y cuando falla) el PDF se genera dentro de la app y se abre el menú Compartir. */
+const cargarScript = src => new Promise((ok, ko) => { if (document.querySelector(`script[src="${src}"]`)) return ok(); const t = document.createElement('script'); t.src = src; t.onload = ok; t.onerror = () => ko(new Error('No se pudo cargar ' + src)); document.head.appendChild(t); });
+async function exportarPDF(nomPer) {
+  if (!esIOS() && !(window.google && google.script)) { window.print(); return; }
+  const btn = $('#btnPdf'); const txt = btn.innerHTML; btn.disabled = true; btn.innerHTML = 'Generando PDF…';
+  const temaAntes = document.documentElement.getAttribute('data-tema');
+  try {
+    await Promise.all([cargarScript('lib/html2canvas.min.js'), cargarScript('lib/jspdf.umd.min.js')]);
+    // maquetar en claro y a ancho fijo
+    document.documentElement.setAttribute('data-tema', 'claro');
+    document.body.classList.add('modo-pdf'); S._anchoPDF = 1060; pintarResumen();
+    await new Promise(r => setTimeout(r, 120));
+    await Promise.all([...document.querySelectorAll('#main img')].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
+    const main = $('#main'), base = main.getBoundingClientRect().top + scrollY;
+    // posibles puntos de corte: final de cada bloque (no se parte ninguna tarjeta)
+    const cortes = [...main.querySelectorAll('.inf-cab,.kpis,.rejilla>.tarjeta')].map(el => { const r = el.getBoundingClientRect(); return r.bottom + scrollY - base; }).sort((a,b)=>a-b);
+    const canvas = await html2canvas(main, { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: document.documentElement.clientWidth });
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+    const M = 10, anchoMM = 210 - 2*M, altoMM = 297 - 2*M - 6;
+    const pxPorMM = canvas.width / anchoMM, altoPx = altoMM * pxPorMM, escala = canvas.width / main.offsetWidth;
+    let ini = 0, pag = 0;
+    while (ini < canvas.height - 4) {
+      let fin = ini + altoPx;
+      const c = cortes.map(x => x * escala).filter(x => x > ini + 40 && x <= fin);
+      if (fin < canvas.height && c.length) fin = Math.max(...c) + 8; else fin = Math.min(fin, canvas.height);
+      const trozo = document.createElement('canvas'); trozo.width = canvas.width; trozo.height = Math.ceil(fin - ini);
+      const g = trozo.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, trozo.width, trozo.height);
+      g.drawImage(canvas, 0, ini, canvas.width, trozo.height, 0, 0, canvas.width, trozo.height);
+      if (pag++) doc.addPage();
+      doc.addImage(trozo.toDataURL('image/jpeg', 0.9), 'JPEG', M, M, anchoMM, trozo.height / pxPorMM);
+      ini = fin;
+    }
+    const total = doc.getNumberOfPages();
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i); doc.setFontSize(8); doc.setTextColor(120);
+      doc.text(`Fundación Osasuna · Escuela de Fútbol 2026-27 · Informe de incidencias · ${nomPer}`, M, 297 - 6);
+      doc.text(`${i} / ${total}`, 210 - M, 297 - 6, { align: 'right' });
+    }
+    const nombre = `Informe incidencias ${nomPer}.pdf`.replace(/\s+/g, ' ');
+    mostrarPdfListo(new File([doc.output('blob')], nombre, { type: 'application/pdf' }));
+  } catch (e) {
+    toast('No se pudo generar el PDF: ' + e.message, true);
+  } finally {
+    document.body.classList.remove('modo-pdf'); S._anchoPDF = null;
+    document.documentElement.setAttribute('data-tema', temaAntes);
+    pintarResumen();
+  }
+}
+function mostrarPdfListo(file) {
+  const url = URL.createObjectURL(file);
+  const w = document.createElement('div'); w.id = 'pdfListo';
+  const puedeCompartir = navigator.canShare && navigator.canShare({ files: [file] });
+  w.innerHTML = `<div class="hoja"><div class="ic">PDF</div><h3>Informe listo</h3><p>${esc(file.name)}</p>
+    ${puedeCompartir ? '<button class="btn" id="pdfCompartir">Compartir · Guardar · Imprimir</button>' : ''}
+    <a class="btn ${puedeCompartir ? 'sec' : ''}" id="pdfAbrir" href="${url}" target="_blank" rel="noopener" download="${esc(file.name)}" style="text-decoration:none">Abrir PDF</a>
+    <button class="btn sec" id="pdfCerrar">Cerrar</button></div>`;
+  document.body.appendChild(w);
+  const cerrar = () => { w.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000); };
+  w.onclick = e => { if (e.target === w) cerrar(); };
+  $('#pdfCerrar').onclick = cerrar;
+  const sh = $('#pdfCompartir');
+  if (sh) sh.onclick = async () => { try { await navigator.share({ files: [file], title: file.name }); cerrar(); } catch (e) { if (e.name !== 'AbortError') toast('Usa «Abrir PDF»', true); } };
 }
 
 let _rz; window.addEventListener('resize', () => { clearTimeout(_rz); _rz = setTimeout(() => { if (S.tab === 'resumen') pintarResumen(); }, 200); });
@@ -1072,15 +1190,15 @@ function columnas(datos) {
   const y = v => pt + (H - pt - pb) * (1 - v / top), bw = Math.min(22, ((W - pl - pr) / datos.length - 14) / 2);
   const slot = (W - pl - pr) / datos.length;
   let g = '';
-  for (let v = 0; v <= top; v += paso) g += `<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="#e6e8ee"/><text x="${pl-6}" y="${y(v)+4}" font-size="11" fill="#6b7280" text-anchor="end">${v}</text>`;
+  for (let v = 0; v <= top; v += paso) g += `<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" style="stroke:var(--linea)"/><text x="${pl-6}" y="${y(v)+4}" font-size="11" style="fill:var(--gris)" text-anchor="end">${v}</text>`;
   datos.forEach((d, i) => {
     const cx = pl + slot * i + slot / 2, act = S.periodo === d.m;
     [[d.aus, C_AUS, -1], [d.sust, C_SUS, 1]].forEach(([v, c, lado]) => {
       const x = lado < 0 ? cx - bw - 1 : cx + 1, h = Math.max(0, H - pb - y(v));
-      if (h > 0) g += `<path d="${barraV(x, H - pb, bw, h)}" fill="${c}" opacity="${S.periodo==='Temporada'||act?1:.35}"/>`;
+      if (h > 0) g += `<path d="${barraV(x, H - pb, bw, h)}" style="fill:${c}" opacity="${S.periodo==='Temporada'||act?1:.35}"/>`;
     });
     g += `<rect x="${cx - slot/2}" y="${pt}" width="${slot}" height="${H-pt-pb}" fill="transparent" data-tip="<b>${d.m}</b><br>Ausencias ${d.aus}<br>Sustituciones ${d.sust}"/>`;
-    g += `<text x="${cx}" y="${H-8}" font-size="12" fill="${act?'#1b1f29':'#6b7280'}" font-weight="${act?700:500}" text-anchor="middle">${MES_CORTO[d.m]}</text>`;
+    g += `<text x="${cx}" y="${H-8}" font-size="12" style="fill:${act?'var(--tinta)':'var(--gris)'}" font-weight="${act?700:500}" text-anchor="middle">${MES_CORTO[d.m]}</text>`;
   });
   return `<svg class="svgw" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;height:auto" role="img" aria-label="Ausencias y sustituciones por mes">${g}</svg>`;
 }
@@ -1096,11 +1214,11 @@ function barrasH(items, color, dec, suf) {
   items.forEach((it, i) => {
     const yy = i * fila + 6, w = Math.max(it.valor > 0 ? 3 : 0, (W - lab - pr) * it.valor / max);
     const nombre = it.etiqueta.length > 22 ? it.etiqueta.slice(0, 21) + '…' : it.etiqueta;
-    g += `<text x="0" y="${yy+(it.sub?8:13)}" font-size="12" fill="#1b1f29" font-weight="600">${esc(nombre)}</text>`;
-    if (it.sub) g += `<text x="0" y="${yy+20}" font-size="10" fill="#6b7280">${esc(it.sub.length>26?it.sub.slice(0,25)+'…':it.sub)}</text>`;
-    g += `<rect x="${lab}" y="${yy}" width="${W-lab-pr}" height="18" rx="4" fill="#f1f2f5"/>`;
-    if (w > 0) g += `<path d="${barraH(lab, yy, w, 18)}" fill="${color}"/>`;
-    g += `<text x="${lab + w + 6}" y="${yy+13}" font-size="12" fill="#1b1f29" font-weight="700">${nf(it.valor, dec)}${suf}</text>`;
+    g += `<text x="0" y="${yy+(it.sub?8:13)}" font-size="12" style="fill:var(--tinta)" font-weight="600">${esc(nombre)}</text>`;
+    if (it.sub) g += `<text x="0" y="${yy+20}" font-size="10" style="fill:var(--gris)">${esc(it.sub.length>26?it.sub.slice(0,25)+'…':it.sub)}</text>`;
+    g += `<rect x="${lab}" y="${yy}" width="${W-lab-pr}" height="18" rx="4" style="fill:var(--pista)"/>`;
+    if (w > 0) g += `<path d="${barraH(lab, yy, w, 18)}" style="fill:${color}"/>`;
+    g += `<text x="${lab + w + 6}" y="${yy+13}" font-size="12" style="fill:var(--tinta)" font-weight="700">${nf(it.valor, dec)}${suf}</text>`;
     g += `<rect x="0" y="${yy-4}" width="${W}" height="${fila}" fill="transparent" data-tip="${esc(it.tip)}"/>`;
   });
   return `<svg class="svgw" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;height:auto" role="img">${g}</svg>`;
@@ -1146,8 +1264,14 @@ setTimeout(mostrarBannerInstalar, 1200);
 $('#btnMenu').onclick = () => {
   $('#menuInfo').innerHTML = `Conectado como <b>${esc(S.user.persona)}</b>${S.user.admin?' (administración)':''}.<br>Grupos: ${S.user.grupos.map(g=>esc(titulo(g))).join(', ')}`;
   $('#instalar').classList.toggle('oculto', esStandalone());
+  pintarTemas();
   $('#menu').classList.remove('oculto');
 };
+function pintarTemas(){ const t = store.get('inc_tema') || 'auto'; document.querySelectorAll('.temas button').forEach(b => b.classList.toggle('on', b.dataset.tema === t)); }
+document.querySelectorAll('.temas button').forEach(b => b.onclick = () => {
+  store.set('inc_tema', b.dataset.tema); aplicarTema(); pintarTemas();
+  if (S.tab === 'resumen') pintarResumen();
+});
 $('#menu').onclick = e => { if (e.target.id === 'menu') $('#menu').classList.add('oculto'); };
 $('#recargar').onclick = () => { $('#menu').classList.add('oculto'); enviarCola(); cargar(true); };
 $('#instalar').onclick = async () => {
