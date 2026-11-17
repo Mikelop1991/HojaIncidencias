@@ -106,6 +106,7 @@ main{padding:14px 14px calc(90px + env(safe-area-inset-bottom));max-width:680px;
 .lista{display:flex;flex-direction:column;gap:8px}
 .mon{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);border-radius:14px;padding:12px 14px;box-shadow:var(--sombra)}
 .mon:active{filter:brightness(.97)}
+.av.foto{object-fit:cover;padding:0;border-radius:50%}
 .av{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-weight:700;background:var(--fondo);color:var(--texto-azul);font-size:15px}
 .mon .info{flex:1;min-width:0}
 .mon .nom{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -126,6 +127,7 @@ main{padding:14px 14px calc(90px + env(safe-area-inset-bottom));max-width:680px;
 .fcab{position:sticky;top:0;z-index:2;background:var(--card);padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--linea)}
 .fcab .icono{background:var(--fondo);color:var(--tinta)}
 .fcab .t{flex:1;min-width:0}
+.fav{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;display:block}
 .fcab .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fcab .t span{font-size:13px;color:var(--gris)}
 .fcuerpo{padding:14px 14px 10px;max-width:680px;margin:0 auto}
@@ -410,7 +412,7 @@ body.modo-pdf .tscroll{overflow:visible}
     <button class="icono" id="cerrarFicha" aria-label="Volver">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
-    <div class="t"><b id="fNombre"></b><span id="fSub"></span></div>
+    <div id="fFoto"></div><div class="t"><b id="fNombre"></b><span id="fSub"></span></div>
   </div>
   <div class="fcuerpo" id="fCuerpo"></div>
   <div class="pie"><button class="btn" id="guardar">Guardar</button></div>
@@ -487,6 +489,17 @@ function toast(msg, mal) {
 /* ---------- fotos de perfil (carpeta fotos/, nombre-apellido.jpg) */
 const slug = t => String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().split(/\s+/).slice(0,2).join('-');
 const fotoDe = nombre => 'fotos/' + (/^administraci/i.test(nombre) ? 'mikel-lopez' : slug(nombre)) + '.jpg';
+/* fotos de monitores: fotos/monitores/nombre-apellido.jpg (lista en index.json) */
+const slugMon = m => (m.nombre + ' ' + m.ap1).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+S.fotosMon = new Set(store.getJ('inc_fotos_mon') || []);
+fetch('fotos/monitores/index.json', { cache:'no-cache' }).then(r => r.ok ? r.json() : []).then(l => {
+  const antes = [...S.fotosMon].join(); S.fotosMon = new Set(l); store.setJ('inc_fotos_mon', l);
+  if (antes !== l.join() && S.user && S.tab === 'monitores' && !S.ficha) pintar();
+}).catch(() => {});
+function avatarMon(m, cls) {
+  const sl = slugMon(m);
+  return S.fotosMon.has(sl) ? `<img class="${cls||'av'} foto" src="fotos/monitores/${sl}.jpg" alt="" loading="lazy">` : `<div class="${cls||'av'}">${esc(iniciales(m))}</div>`;
+}
 function imgMini(nombre){ return `<img class="mini" src="${fotoDe(nombre)}" alt="" onerror="this.remove()">`; }
 
 /* ======================= LOGIN ======================= */
@@ -658,7 +671,7 @@ function pintarLista() {
     <div class="lista">${lista.map(m => {
       const rapido = !bloq(d) && (m.estado === 'pendiente' || m.estado === 'enhoja' || m.estado === 'error');
       return `<div class="mon" role="button" tabindex="0" data-k="${esc(m.key)}">
-        <div class="av">${esc(iniciales(m))}</div>
+        ${avatarMon(m)}
         <div class="info">
           <div class="nom">${esc(m.nombre)} ${esc(m.ap1)} ${esc(m.ap2)}</div>
           <div class="sub">${DIAS_CORTOS.map((x,i)=>`<span class="d ${m.fijos.includes(i)?'fijo':''}">${x}</span>`).join('')}</div>
@@ -783,6 +796,7 @@ function abrirFicha(m) {
     v: { partidos:m.datos.partidos, ausencias:m.datos.ausencias, sust:m.datos.sust, km:m.datos.km, peajes:m.datos.peajes, obs:m.datos.obs }
   };
   $('#fNombre').textContent = `${m.nombre} ${m.ap1} ${m.ap2}`;
+  $('#fFoto').innerHTML = S.fotosMon.has(slugMon(m)) ? avatarMon(m, 'fav') : '';
   $('#fSub').textContent = `${dm.mes} ${dm.anio} · ${titulo(dm.grupo)}`;
   pintarFicha();
   $('#guardar').classList.toggle('oculto', bloq(dm));
