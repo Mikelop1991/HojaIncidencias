@@ -309,9 +309,9 @@ function comprobarGrupo_(u, grupo) {
   if (!u.grupos.some(function (g) { return norm_(g) === norm_(grupo); })) throw new Error('No tienes acceso a ese grupo.');
 }
 
-function comprobarMes_(mes, aj, escribir) {
+function comprobarMes_(mes, aj, escribir, admin) {
   if (MESES.indexOf(mes) < 0) throw new Error('Mes no válido.');
-  if (escribir && aj.cerrados.indexOf(norm_(mes)) >= 0) throw new Error('El mes de ' + mes + ' está cerrado. Habla con Mikel si necesitas cambiar algo.');
+  if (escribir && !admin && aj.cerrados.indexOf(norm_(mes)) >= 0) throw new Error('El mes de ' + mes + ' está cerrado. Habla con Mikel si necesitas cambiar algo.');
 }
 
 function festivosDelMes_(mes, aj) {
@@ -552,6 +552,27 @@ var ACCIONES = {
     return out;
   },
 
+  /** Bloquear / desbloquear meses (solo administración). meses: lista; cerrar: true/false. */
+  bloquear: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    var lista = (p.meses || []).filter(function (m) { return MESES.indexOf(m) >= 0; });
+    return conBloqueo_(function () {
+      var sh = hoja_('_Ajustes', H_AJUSTES), filas = filas_(sh), fila = -1;
+      for (var i = 0; i < filas.length; i++) if (String(filas[i][0]).trim() === 'MESES_CERRADOS') { fila = i + 2; break; }
+      var actuales = fila > 0 ? String(filas[fila - 2][1] || '').split(/[;,]/).map(function (x) { return x.trim(); }).filter(String) : [];
+      var set = {}; actuales.forEach(function (m) { var k = MESES.filter(function (x) { return norm_(x) === norm_(m); })[0]; if (k) set[k] = 1; });
+      lista.forEach(function (m) { if (p.cerrar) set[m] = 1; else delete set[m]; });
+      var valor = MESES.filter(function (m) { return set[m]; }).join('; ');
+      if (fila > 0) sh.getRange(fila, 2).setValue(valor);
+      else sh.appendRow(['MESES_CERRADOS', valor, 'Meses que ya no se pueden editar desde la app (salvo administración)']);
+      limpiarCache_();
+      lista.forEach(function (m) { invalidarMes_(m); });
+      log_(u.persona, p.cerrar ? 'Bloquear' : 'Desbloquear', lista.join(', '));
+      return { cerrados: MESES.filter(function (m) { return set[m]; }) };
+    });
+  },
+
   /** Varios guardados en una sola llamada (más rápido desde el móvil). */
   lote: function (p) {
     var res = [];
@@ -576,7 +597,7 @@ var ACCIONES = {
 
   guardarMonitor: function (p) {
     var u = usuario_(p.codigo), aj = ajustes_();
-    comprobarMes_(p.mes, aj, true);
+    comprobarMes_(p.mes, aj, true, u.admin);
     comprobarGrupo_(u, p.grupo);
     var m = monitoresDelGrupo_(p.mes, p.grupo).filter(function (x) { return x.key === p.key; })[0];
     if (!m) throw new Error('Ese monitor no está en tu grupo este mes.');
@@ -628,7 +649,7 @@ var ACCIONES = {
 
   guardarMisDatos: function (p) {
     var u = usuario_(p.codigo), aj = ajustes_();
-    comprobarMes_(p.mes, aj, true);
+    comprobarMes_(p.mes, aj, true, u.admin);
     var nombre = p.responsable || u.responsables[0];
     if (!nombre || u.responsables.indexOf(nombre) < 0) throw new Error('No tienes datos propios configurados.');
     return conBloqueo_(function () {

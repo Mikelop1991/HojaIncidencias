@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Incidencias">
 <title>Incidencias Escuela 26-27</title>
-<script src="config.js?v=8"></script>
+<script src="config.js?v=9"></script>
 <link rel="preconnect" href="https://script.google.com" crossorigin>
 <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
 <link rel="manifest" href="manifest.webmanifest">
@@ -231,6 +231,15 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 }
 @media (min-width:900px) and (max-width:1150px){ .fcuerpo{grid-template-columns:1fr} .fcuerpo .tarjeta:first-child{grid-row:auto} }
 
+/* ---------- bloqueo de meses (administración) */
+.bloqueo{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--sombra);border-left:4px solid var(--verde);font-size:14px}
+.bloqueo.on{border-left-color:var(--rojo)}
+.bloqueo div{flex:1}.bloqueo span{color:var(--gris);font-size:12px}
+.bloqueo button{flex:none;padding:9px 14px;border-radius:10px;font-weight:800;font-size:13px;background:var(--rojo);color:#fff}
+.bloqueo.on button{background:var(--verde);color:#fff}
+.meses-bloq{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.meses-bloq button{padding:7px 11px;border-radius:999px;font-size:13px;font-weight:700;background:var(--fondo);color:var(--tinta);border:1.5px solid var(--linea)}
+.meses-bloq button.on{background:var(--rojo-suave);color:var(--rojo);border-color:var(--rojo)}
 /* ---------- confirmación rápida y recordatorios */
 .rapido{flex:none;width:44px;height:44px;border-radius:50%;border:2px solid var(--borde-fijo);color:var(--gris);font-size:20px;font-weight:800;display:grid;place-items:center;background:var(--card)}
 .rapido:hover,.rapido:active{border-color:var(--verde);color:#fff;background:var(--verde)}
@@ -599,6 +608,8 @@ function pintar() {
   if (d) { S.datosMes = vista(d); pintarLista(); }
   else $('#main').innerHTML = '<div class="cargando"><div class="spin"></div></div>';
 }
+/** ¿No se puede editar? (administración siempre puede) */
+const bloq = d => !!(d && d.cerrado && !(S.user && S.user.admin));
 function vista(d) { return Object.assign({}, d, { grupo:S.grupo, monitores:(d.grupos[S.grupo] || []) }); }
 
 async function cargar(forzar) {
@@ -627,11 +638,14 @@ function pintarLista() {
   const total = d.monitores.length, hechos = d.monitores.filter(m => m.estado === 'guardado' || m.estado === 'enviando').length;
   const f = S.filtro.toLowerCase();
   const lista = d.monitores.filter(m => !f || `${m.nombre} ${m.ap1} ${m.ap2}`.toLowerCase().includes(f));
-  const rapidos = d.cerrado ? [] : d.monitores.filter(m => m.estado === 'pendiente' && m.fijos.length);
+  const rapidos = bloq(d) ? [] : d.monitores.filter(m => m.estado === 'pendiente');
   const aviso = avisoPendientes(d);
   main.innerHTML = `
     ${grupos}
-    ${d.cerrado ? `<div class="aviso">🔒 ${esc(d.mes)} está cerrado: puedes consultar pero no modificar.</div>` : ''}
+    ${bloq(d) ? `<div class="aviso">🔒 ${esc(d.mes)} está cerrado: puedes consultar pero no modificar.</div>` : ''}
+    ${S.user.admin ? `<div class="bloqueo ${d.cerrado?'on':''}">
+        <div><b>${d.cerrado ? '🔒 ' + esc(d.mes) + ' bloqueado' : '🔓 ' + esc(d.mes) + ' abierto'}</b><br><span>${d.cerrado ? 'Los responsables solo pueden consultar. Tú sí puedes editar.' : 'Los responsables pueden apuntar y modificar.'}</span></div>
+        <button id="btnBloq">${d.cerrado ? 'Desbloquear' : 'Bloquear'}</button></div>` : ''}
     <div class="resumen-fila">
     <div class="resumen">
       <div class="fila"><span>${esc(d.mes)} ${d.anio}${S.user.grupos.length>1?' · '+esc(titulo(d.grupo)):''}</span><span><b>${hechos}</b> / ${total} revisados</span></div>
@@ -640,32 +654,33 @@ function pintarLista() {
     ${total > 8 ? `<input class="buscar" id="buscar" placeholder="Buscar monitor…" value="${esc(S.filtro)}">` : ''}
     </div>
     ${aviso}
-    ${rapidos.length > 1 && !d.cerrado ? `<button class="lote-ok" id="loteOk"><span><b>${rapidos.length} pendientes</b> con días fijos</span><span class="lote-btn">✓ Confirmar todos sin incidencias</span></button>` : ''}
+    ${rapidos.length > 1 ? `<button class="lote-ok" id="loteOk"><span><b>${rapidos.length} pendientes</b></span><span class="lote-btn">✓ Todos OK, sin incidencias</span></button>` : ''}
     <div class="lista">${lista.map(m => {
-      const rapido = !d.cerrado && m.estado === 'pendiente' && m.fijos.length;
+      const rapido = !bloq(d) && (m.estado === 'pendiente' || m.estado === 'enhoja' || m.estado === 'error');
       return `<div class="mon" role="button" tabindex="0" data-k="${esc(m.key)}">
         <div class="av">${esc(iniciales(m))}</div>
         <div class="info">
           <div class="nom">${esc(m.nombre)} ${esc(m.ap1)} ${esc(m.ap2)}</div>
           <div class="sub">${DIAS_CORTOS.map((x,i)=>`<span class="d ${m.fijos.includes(i)?'fijo':''}">${x}</span>`).join('')}</div>
         </div>
-        ${rapido ? `<button class="rapido" data-ok="${esc(m.key)}" aria-label="Sin incidencias: confirmar sus días fijos" title="Sin incidencias">✓</button>`
-          : `<span class="estado ${m.estado}">${{guardado:'✓ Hecho',pendiente:'Pendiente',enhoja:'En hoja',enviando:'↑ Enviando',error:'⚠ Error'}[m.estado]}</span>`}
+        ${m.estado !== 'pendiente' ? `<span class="estado ${m.estado}">${{guardado:'✓ Hecho',pendiente:'Pendiente',enhoja:'En hoja',enviando:'↑ Enviando',error:'⚠ Error'}[m.estado]}</span>` : ''}
+        ${rapido ? `<button class="rapido" data-ok="${esc(m.key)}" aria-label="Todo OK, sin incidencias" title="Todo OK, sin incidencias">✓</button>` : ''}
       </div>`; }).join('') || '<div class="vacio">No hay monitores.</div>'}
     </div>
-    ${rapidos.length && !S._ayudaRapido ? '<p class="meta">Pulsa ✓ si el monitor ha ido todos sus días fijos y no hay nada que apuntar. Para cualquier incidencia, toca su nombre.</p>' : ''}`;
+    ${rapidos.length && !S._ayudaRapido ? '<p class="meta">Pulsa ✓ si el monitor no tiene ninguna incidencia este mes. Si tiene algo que apuntar, toca su nombre.</p>' : ''}`;
   main.querySelectorAll('.grupo').forEach(b => b.onclick = () => { S.grupo = b.dataset.g; store.set('inc_grupo', S.grupo); S.filtro=''; pintar(); });
   main.querySelectorAll('.mon').forEach(b => {
     b.onclick = e => { if (e.target.closest('.rapido')) return; abrirFicha(d.monitores.find(m => m.key === b.dataset.k)); };
     b.onkeydown = e => { if (e.key === 'Enter') b.click(); };
   });
+  const bb = $('#btnBloq'); if (bb) bb.onclick = () => bloquearMeses([d.mes], !d.cerrado);
   main.querySelectorAll('.rapido').forEach(b => b.onclick = () => {
     confirmarSinIncidencias([d.monitores.find(m => m.key === b.dataset.ok)]);
     if (navigator.vibrate) navigator.vibrate(10);
   });
   const lo = $('#loteOk');
   if (lo) lo.onclick = () => {
-    if (!confirm(`Se marcarán ${rapidos.length} monitores con todos sus días fijos (sin festivos) y sin incidencias. Podrás cambiar cualquiera después. ¿Continuar?`)) return;
+    if (!confirm(`Se darán por buenos ${rapidos.length} monitores, sin incidencias (con sus días fijos, si los tienen). Podrás cambiar cualquiera después. ¿Continuar?`)) return;
     confirmarSinIncidencias(rapidos);
   };
   const bus = $('#buscar');
@@ -678,9 +693,10 @@ function confirmarSinIncidencias(lista) {
   lista.forEach(m => {
     const dias = [...seleccionInicial(m, dm)].sort((a,b)=>a-b);
     const conteo = [0,0,0,0,0]; dias.forEach(x => { const w = new Date(dm.anio, dm.mesNum-1, x).getDay(); if (w>=1&&w<=5) conteo[w-1]++; });
-    const params = { mes:dm.mes, grupo:dm.grupo, key:m.key, dias, partidos:null, ausencias:null, sust:null, km:null, peajes:null, obs:'' };
+    const v = m.datos || {};
+    const params = { mes:dm.mes, grupo:dm.grupo, key:m.key, dias, partidos:v.partidos??null, ausencias:v.ausencias??null, sust:v.sust??null, km:v.km??null, peajes:v.peajes??null, obs:v.obs||'' };
     Object.assign(m, { dias, estado:'enviando', actualizado:new Date().toISOString(), por:S.user.persona });
-    Object.assign(m.datos, { conteo, partidos:null, ausencias:null, sust:null, km:null, peajes:null, obs:'' });
+    Object.assign(m.datos, { conteo });
     S.cola = S.cola.filter(x => !(x.action === 'guardarMonitor' && x.params.mes === params.mes && x.params.grupo === params.grupo && x.params.key === params.key));
     S.cola.push({ action:'guardarMonitor', params, local: JSON.parse(JSON.stringify(m)) });
   });
@@ -688,6 +704,21 @@ function confirmarSinIncidencias(lista) {
   guardarCola(); guardarCache(); pintarLista();
   toast(lista.length > 1 ? `${lista.length} monitores confirmados ✓` : 'Confirmado ✓');
   enviarCola();
+}
+
+/** Bloquear / desbloquear meses (solo administración). */
+async function bloquearMeses(meses, cerrar) {
+  if (cerrar && !confirm(`¿Bloquear ${meses.join(', ')}? Los responsables podrán consultar pero no modificar nada.`)) return;
+  try {
+    const r = await api('bloquear', { meses, cerrar });
+    S.user.cerrados = r.cerrados;
+    Object.values(S.datos).forEach(d => { if (d) d.cerrado = r.cerrados.includes(d.mes); });
+    S.mis = {};
+    guardarCache(); pintarMeses(); pintar();
+    toast(cerrar ? '🔒 Bloqueado' : '🔓 Desbloqueado');
+  } catch (e) {
+    toast(/Acci[oó]n desconocida/.test(e.message) ? 'Actualiza el código de Apps Script para usar el bloqueo' : e.message, true);
+  }
 }
 
 /* ---------- recordatorios dentro de la app */
@@ -754,7 +785,7 @@ function abrirFicha(m) {
   $('#fNombre').textContent = `${m.nombre} ${m.ap1} ${m.ap2}`;
   $('#fSub').textContent = `${dm.mes} ${dm.anio} · ${titulo(dm.grupo)}`;
   pintarFicha();
-  $('#guardar').classList.toggle('oculto', !!dm.cerrado);
+  $('#guardar').classList.toggle('oculto', bloq(dm));
   $('#ficha').classList.add('abierta'); $('#ficha').setAttribute('aria-hidden','false');
   $('#ficha').scrollTop = 0;
   try { history.pushState({ficha:1}, ''); } catch(e) {}
@@ -783,7 +814,7 @@ function pintarFicha() {
   if (hab.length) celdas += '<div class="vacio-dia"></div>'.repeat(hab[0].wd);
   hab.forEach(h => {
     const cls = ['dia', m.fijos.includes(h.wd)?'fijo':'', F.sel.has(h.d)?'on':'', fest[h.d]?'fest':'', esHoyMes&&hoy.getDate()===h.d?'hoy':''].join(' ');
-    celdas += `<button class="${cls}" data-d="${h.d}" ${dm.cerrado?'disabled':''} title="${esc(fest[h.d]||'')}">${h.d}${fest[h.d]?'<small>fest.</small>':''}</button>`;
+    celdas += `<button class="${cls}" data-d="${h.d}" ${bloq(dm)?'disabled':''} title="${esc(fest[h.d]||'')}">${h.d}${fest[h.d]?'<small>fest.</small>':''}</button>`;
   });
   const conteo = [0,0,0,0,0]; hab.forEach(h => { if (F.sel.has(h.d)) conteo[h.wd]++; });
   const sinMarcar = hab.filter(h => m.fijos.includes(h.wd) && !fest[h.d] && !F.sel.has(h.d)).length;
@@ -797,7 +828,7 @@ function pintarFicha() {
         : 'Toca un día para marcarlo o desmarcarlo.'}</p>
       <div class="cal">${celdas}</div>
       <div class="conteo">${DIAS_CORTOS.map((x,i)=>`<div><b>${conteo[i]}</b>${x}</div>`).join('')}</div>
-      ${sinMarcar && !dm.cerrado ? `<div class="pista">${sinMarcar} día${sinMarcar>1?'s':''} fijo${sinMarcar>1?'s':''} sin marcar
+      ${sinMarcar && !bloq(dm) ? `<div class="pista">${sinMarcar} día${sinMarcar>1?'s':''} fijo${sinMarcar>1?'s':''} sin marcar
           ${(F.v.ausencias||0) !== sinMarcar ? `<button id="usarAus">Poner en ausencias</button>`:''}</div>` : ''}
       <div class="leyenda"><span><i style="background:var(--azul)"></i>Ha ido</span><span><i style="border:2px solid var(--borde-fijo);background:var(--fondo)"></i>Día fijo</span><span><i style="background:repeating-linear-gradient(135deg,var(--fondo) 0 3px,var(--linea) 3px 6px)"></i>Festivo</span></div>
     </div>
@@ -808,16 +839,16 @@ function pintarFicha() {
       ${paso('ausencias','Ausencias','Días que no fue')}
       ${paso('sust','Sustituciones','Veces que cubrió a otro')}
       <div class="campo"><div class="et">Km especiales<small>Formación, liga, partidos…</small></div>
-        <div class="sufijo"><input class="num" inputmode="decimal" data-f="km" value="${fmt(F.v.km)}" placeholder="0" ${dm.cerrado?'disabled':''}>km</div></div>
+        <div class="sufijo"><input class="num" inputmode="decimal" data-f="km" value="${fmt(F.v.km)}" placeholder="0" ${bloq(dm)?'disabled':''}>km</div></div>
       <div class="campo"><div class="et">Peajes</div>
-        <div class="sufijo"><input class="num" inputmode="decimal" data-f="peajes" value="${fmt(F.v.peajes)}" placeholder="0,00" ${dm.cerrado?'disabled':''}>€</div></div>
+        <div class="sufijo"><input class="num" inputmode="decimal" data-f="peajes" value="${fmt(F.v.peajes)}" placeholder="0,00" ${bloq(dm)?'disabled':''}>€</div></div>
     </div>
 
     <div class="tarjeta">
       <h3>Observaciones</h3>
       <p class="ayuda">Motivo de la ausencia, a quién sustituye y qué día, etc.</p>
       <div class="chips">${['Sustituye a ','Falta el ','Formación ','Comparte coche'].map(c=>`<button class="chip" data-chip="${c}">${c.trim()}…</button>`).join('')}</div>
-      <textarea id="obs" placeholder="Ej.: Sustituye a Víctor en Griseras el 3/11" ${dm.cerrado?'disabled':''}>${esc(F.v.obs)}</textarea>
+      <textarea id="obs" placeholder="Ej.: Sustituye a Víctor en Griseras el 3/11" ${bloq(dm)?'disabled':''}>${esc(F.v.obs)}</textarea>
       ${m.actualizado ? `<div class="meta">Última vez guardado ${new Date(m.actualizado).toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${m.por?' por '+esc(m.por):''}</div>`:''}
     </div>`;
 
@@ -842,7 +873,7 @@ function pintarFicha() {
 }
 
 function paso(f, et, sub) {
-  const dis = S.datosMes.cerrado ? 'disabled' : '';
+  const dis = bloq(S.datosMes) ? 'disabled' : '';
   return `<div class="campo"><div class="et">${et}${sub?`<small>${sub}</small>`:''}</div>
     <div class="paso"><button data-paso="${f}" data-delta="-1" ${dis} aria-label="Restar">−</button><output>${S.ficha.v[f]||0}</output><button data-paso="${f}" data-delta="1" ${dis} aria-label="Sumar">+</button></div></div>`;
 }
@@ -926,13 +957,13 @@ async function refrescarMisDatos(forzar) {
   } catch (e) { if (!d) $('#main').innerHTML = `<div class="vacio">${esc(e.message)}</div>`; }
 }
 function pintarMisDatos(d) {
-  const main = $('#main'), dis = d.cerrado ? 'disabled' : '';
+  const main = $('#main'), dis = bloq(d) ? 'disabled' : '';
   const v = { km:d.km, partidos:d.partidos||0, sust:d.sust||0, peajes:d.peajes, obs:d.obs };
   const sel = S.user.responsables.length > 1
     ? `<div class="grupos">${S.user.responsables.map(r=>`<button class="grupo ${r===S.misResp?'on':''}" data-r="${esc(r)}">${imgMini(r)}${esc(r)}</button>`).join('')}</div>` : '';
   main.innerHTML = `
     ${sel}
-    ${d.cerrado ? `<div class="aviso">🔒 ${esc(S.mes)} está cerrado.</div>` : ''}
+    ${bloq(d) ? `<div class="aviso">🔒 ${esc(S.mes)} está cerrado.</div>` : d.cerrado ? `<div class="aviso">🔒 ${esc(S.mes)} cerrado para los responsables · tú puedes editar.</div>` : ''}
     <div class="mis"><div class="tarjeta">
       <h3>${esc(d.responsable)} · ${esc(S.mes)}</h3>
       <p class="ayuda">Tus propios kilómetros, partidos y sustituciones del mes.</p>
@@ -948,7 +979,7 @@ function pintarMisDatos(d) {
       <p class="ayuda">Detalle de viajes, sustituciones, material…</p>
       <textarea id="mObs" ${dis} placeholder="Ej.: 2 viajes Zizur - Ayegui - Zizur (159 km)">${esc(v.obs)}</textarea>
     </div></div>
-    ${d.cerrado ? '' : '<button class="btn" id="mGuardar">Guardar mis datos</button>'}`;
+    ${bloq(d) ? '' : '<button class="btn" id="mGuardar">Guardar mis datos</button>'}`;
   main.querySelectorAll('.grupo[data-r]').forEach(b => b.onclick = () => { S.misResp = b.dataset.r; cargar(); });
   main.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
     const f = b.dataset.m, min = f === 'sust' ? -99 : 0;
@@ -1029,6 +1060,12 @@ function pintarResumen() {
     </div>
     <div class="inf-pie solo-print">Fundación Osasuna · Escuela de Fútbol 2026-27 · Informe de incidencias · ${esc(nomPer)}</div>
     ${recordatoriosAdmin()}
+    <details class="tarjeta noprint recs" ${S._bloqAbierto ? 'open' : ''} id="bloqMeses">
+      <summary><span>🔒 Bloqueo de meses</span><span class="${S.user.cerrados.length ? 'pill-pend' : 'al-dia'}">${S.user.cerrados.length ? S.user.cerrados.length + ' bloqueado' + (S.user.cerrados.length>1?'s':'') : 'Todo abierto'}</span></summary>
+      <p class="ayuda" style="margin-top:10px">Toca un mes para bloquearlo o desbloquearlo. Bloqueado: los responsables solo pueden consultar (tú sí puedes editar).</p>
+      <div class="meses-bloq">${S.user.meses.map(m => `<button data-bq="${m}" class="${S.user.cerrados.includes(m)?'on':''}">${S.user.cerrados.includes(m)?'🔒':'🔓'} ${m}</button>`).join('')}</div>
+      <div class="meses-bloq" style="margin-top:10px"><button data-bqall="1">🔒 Bloquear todos</button><button data-bqall="0">🔓 Desbloquear todos</button></div>
+    </details>
     <div class="cab-res noprint">
       <div class="periodos">${['Temporada', ...R.meses].map(m => `<button class="per ${m===S.periodo?'on':''}" data-p="${m}">${m}</button>`).join('')}</div>
       <button class="btnpdf" id="btnPdf"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v7H6z"/></svg>Imprimir / PDF</button>
@@ -1075,6 +1112,9 @@ function pintarResumen() {
     <p class="meta noprint">Datos de la hoja a las ${new Date(R.generado).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</p>`;
   main.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { S.periodo = b.dataset.p; pintarResumen(); });
   const rc = main.querySelector('.recs'); if (rc) rc.ontoggle = () => { S._recsAbierto = rc.open; };
+  const bm = $('#bloqMeses'); if (bm) bm.ontoggle = () => { S._bloqAbierto = bm.open; };
+  main.querySelectorAll('[data-bq]').forEach(b => b.onclick = () => bloquearMeses([b.dataset.bq], !S.user.cerrados.includes(b.dataset.bq)));
+  main.querySelectorAll('[data-bqall]').forEach(b => b.onclick = () => bloquearMeses(S.user.meses.slice(), b.dataset.bqall === '1'));
   main.querySelectorAll('[data-met]').forEach(b => b.onclick = () => { S.metricaZona = b.dataset.met; pintarResumen(); });
   $('#btnPdf').onclick = () => exportarPDF(nomPer);
 }
