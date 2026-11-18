@@ -457,6 +457,17 @@ function datosMesTodos_(mes, aj) {
   var hm = datosHojaMes_(mes), fijos = fijosMap_(), c = hm.c, y = anioDeMes_(mes, aj), mn = MES_NUM[mes];
   if (!c) return { anio: y, mesNum: mn, grupos: {} };
   var todosDias = diasGuardados_(mes, null), grupos = [], porGrupo = {}, bajas = bajas_();
+  // km por viaje de cada día (pestaña _Maestro): por responsable+persona y, si no, por persona
+  var kmR = {}, kmP = {};
+  try {
+    filasCache_('_Maestro').forEach(function (r) {
+      if (!r[1]) return;
+      var km = [5, 6, 7, 8, 9].map(function (i) { var v = numTexto_(r[i]).n; return v > 0 ? redondea_(v) : 0; });
+      if (!km.some(Boolean)) return;
+      var kp = nN_(r[1] + ' ' + r[2] + ' ' + r[3]);
+      kmR[nN_(r[0]) + '|' + kp] = km; if (!kmP[kp]) kmP[kp] = km;
+    });
+  } catch (e) { }
   hm.filas.forEach(function (x) { var g = String(x.r[c.grupo]).trim(); if (grupos.indexOf(g) < 0) grupos.push(g); });
   grupos.forEach(function (g) {
     var dias = todosDias[norm_(g)] || {};
@@ -482,6 +493,8 @@ function datosMesTodos_(mes, aj) {
       var conDatos = r && [c.partidos, c.ausencias, c.sust, c.km, c.peajes, c.obs].concat(c.dias)
         .some(function (col) { var v = r[col]; return v !== '' && v != null && String(v).toLowerCase() !== 'x'; });
       m.estado = d ? 'guardado' : (conDatos ? 'enhoja' : 'pendiente');
+      var kp2 = nN_(m.nombre + ' ' + m.ap1 + ' ' + m.ap2), kmd = kmR[nN_(g) + '|' + kp2] || kmP[kp2];
+      if (kmd) m.km = kmd;
       return m;
     }).filter(function (m) { return !(m.estado === 'pendiente' && bajas[nN_(m.nombre + ' ' + m.ap1 + ' ' + m.ap2)]); });
   });

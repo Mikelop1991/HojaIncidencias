@@ -234,6 +234,14 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 @media (min-width:900px) and (max-width:1150px){ .fcuerpo{grid-template-columns:1fr} .fcuerpo .tarjeta:first-child{grid-row:auto} }
 
 
+
+.dk{display:inline-flex;flex-direction:column;align-items:center;gap:1px}
+.dk small{font-size:9px;font-weight:700;color:var(--texto-azul);line-height:1;white-space:nowrap}
+.mon .sub{align-items:flex-start}
+.cal .h small.hkm{display:block;font-size:9px;font-weight:700;color:var(--texto-azul);margin-top:1px;white-space:nowrap}
+.conteo small.ckm{display:block;font-size:10px;color:var(--texto-azul);font-weight:700}
+.kmmes{margin-top:10px;font-size:13px;background:var(--fondo);border-radius:10px;padding:8px 10px}
+.kmmes span{color:var(--gris);font-size:12px}
 /* ---------- retoques visuales */
 .anillo-guardado,.anillo-enviando{box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--verde)}
 .anillo-enhoja{box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--ambar)}
@@ -744,7 +752,9 @@ function pintarLista() {
         ${avatarMon(m)}
         <div class="info">
           <div class="nom">${esc(m.nombre)} ${esc(m.ap1)} ${esc(m.ap2)}</div>
-          <div class="sub">${DIAS_CORTOS.map((x,i)=>`<span class="d ${m.fijos.includes(i)?'fijo':''}">${x}</span>`).join('')}</div>
+          <div class="sub">${DIAS_CORTOS.map((x,i)=> m.km && m.km[i]
+            ? `<span class="dk"><span class="d ${m.fijos.includes(i)?'fijo':''}">${x}</span><small>${String(m.km[i]).replace('.',',')} km</small></span>`
+            : `<span class="d ${m.fijos.includes(i)?'fijo':''}">${x}</span>`).join('')}</div>
         </div>
         ${m.estado !== 'pendiente' ? `<span class="estado ${m.estado}">${{guardado:'✓ Hecho',pendiente:'Pendiente',enhoja:'En hoja',enviando:'↑ Enviando',error:'⚠ Error'}[m.estado]}</span>` : ''}
         ${rapido ? `<button class="rapido" data-ok="${esc(m.key)}" aria-label="Todo OK, sin incidencias" title="Todo OK, sin incidencias">✓</button>` : ''}
@@ -894,7 +904,7 @@ function pintarFicha() {
   const hab = diasHabiles(dm.anio, dm.mesNum);
   const hoy = new Date(); const esHoyMes = hoy.getFullYear()===dm.anio && hoy.getMonth()+1===dm.mesNum;
   // rejilla L-V
-  let celdas = DIAS_CORTOS.map((x,i) => `<div class="h ${m.fijos.includes(i)?'fijo':''}">${x}</div>`).join('');
+  let celdas = DIAS_CORTOS.map((x,i) => `<div class="h ${m.fijos.includes(i)?'fijo':''}">${x}${m.km && m.km[i] ? `<small class="hkm">🚗 ${String(m.km[i]).replace('.',',')} km</small>` : ''}</div>`).join('');
   if (hab.length) celdas += '<div class="vacio-dia"></div>'.repeat(hab[0].wd);
   hab.forEach(h => {
     const cls = ['dia', m.fijos.includes(h.wd)?'fijo':'', F.sel.has(h.d)?'on':'', fest[h.d]?'fest':'', esHoyMes&&hoy.getDate()===h.d?'hoy':''].join(' ');
@@ -911,7 +921,8 @@ function pintarFicha() {
         ? (m.estado==='enhoja' ? 'Marcado a partir de lo que ya había en la hoja. Revisa y guarda.' : 'Propuesta según sus días fijos. Desmarca los días que no fue y marca los extra.')
         : 'Toca un día para marcarlo o desmarcarlo.'}</p>
       <div class="cal">${celdas}</div>
-      <div class="conteo">${DIAS_CORTOS.map((x,i)=>`<div><b>${conteo[i]}</b>${x}</div>`).join('')}</div>
+      <div class="conteo">${DIAS_CORTOS.map((x,i)=>`<div><b>${conteo[i]}</b>${x}${m.km && m.km[i] && conteo[i] ? `<small class="ckm">${String(Math.round(conteo[i]*m.km[i]*10)/10).replace('.',',')} km</small>` : ''}</div>`).join('')}</div>
+      ${m.km ? `<div class="kmmes">🚗 Km de viajes este mes: <b>${String(Math.round(conteo.reduce((a,c,i)=>a+c*(m.km[i]||0),0)*10)/10).replace('.',',')} km</b><span> · ${DIAS_CORTOS.filter((x,i)=>m.km[i]).map(x=>x).join(', ')} con desplazamiento</span></div>` : ''}
       ${sinMarcar && !bloq(dm) ? `<div class="pista">${sinMarcar} día${sinMarcar>1?'s':''} fijo${sinMarcar>1?'s':''} sin marcar
           ${(F.v.ausencias||0) !== sinMarcar ? `<button id="usarAus">Poner en ausencias</button>`:''}</div>` : ''}
       <div class="leyenda"><span><i style="background:var(--azul)"></i>Ha ido</span><span><i style="border:2px solid var(--borde-fijo);background:var(--fondo)"></i>Día fijo</span><span><i style="background:repeating-linear-gradient(135deg,var(--fondo) 0 3px,var(--linea) 3px 6px)"></i>Festivo</span></div>
