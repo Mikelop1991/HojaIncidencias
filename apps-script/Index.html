@@ -346,6 +346,39 @@ body.modo-pdf .tscroll{overflow:visible}
 #pdfListo h3{margin:0 0 4px}#pdfListo p{margin:0 0 16px;color:var(--gris);font-size:14px}
 #pdfListo .btn{margin-top:8px}
 @media (min-width:900px){#pdfListo{align-items:center}#pdfListo .hoja{border-radius:20px}}
+
+/* ---------- asesoría (administración) */
+.tabs .tab{white-space:nowrap}
+.ase-cab{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ase-cab h3{margin:0;flex:1;min-width:200px}
+.ase-cab .sub{font-size:12px;color:var(--gris);font-weight:500;display:block;margin-top:3px}
+.ase-cab .sub button{color:var(--texto-azul);text-decoration:underline;font-size:12px;font-weight:700}
+.pill-ok{font-size:12px;font-weight:800;color:var(--verde);background:var(--verde-suave);padding:6px 10px;border-radius:999px}
+.ase-btns{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 6px}
+.ase-btns button{flex:1;min-width:150px;padding:12px;border-radius:12px;font-weight:800;font-size:14px;background:var(--card);border:1.5px solid var(--linea);color:var(--tinta)}
+.ase-btns button.pri{background:var(--rojo);border-color:var(--rojo);color:#fff}
+.ase-nota{font-size:12px;color:var(--gris);margin:0 0 12px}
+.avisos li{margin:6px 0;font-size:13px}
+.avisos ul{padding-left:18px;margin:6px 0 10px}
+.avisos h4{margin:10px 0 2px;font-size:13px}
+.compl-form{display:grid;grid-template-columns:1fr;gap:8px;margin:10px 0}
+.compl-form input,.compl-form select{width:100%;padding:11px 12px;border:1.5px solid var(--linea);border-radius:10px;background:var(--card);color:var(--tinta)}
+.compl-form .fila2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.compl-lista{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.compl{display:flex;align-items:center;gap:10px;background:var(--fondo);border-radius:10px;padding:9px 12px;font-size:13px}
+.compl b{display:block;font-size:14px}.compl span{color:var(--gris)}
+.compl .imp{margin-left:auto;font-weight:800;white-space:nowrap}
+.compl button{color:var(--gris);font-size:18px;padding:0 4px}
+.ase-filtros{display:flex;gap:8px;align-items:center;margin:0 0 8px;flex-wrap:wrap}
+.ase-filtros input{flex:1;min-width:160px;padding:10px 12px;border:1.5px solid var(--linea);border-radius:10px;background:var(--card);color:var(--tinta)}
+.tabla tr.extra td{background:var(--rec-bg)}
+.tabla td.cero{color:var(--linea)}
+.tabla .cod{color:var(--gris);font-size:12px;font-variant-numeric:tabular-nums}
+#modalLista{position:fixed;inset:0;z-index:70;background:rgba(10,15,27,.55);display:flex;align-items:flex-end;justify-content:center}
+#modalLista .hoja{background:var(--card);color:var(--tinta);width:100%;max-width:620px;border-radius:20px 20px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom))}
+#modalLista textarea{min-height:180px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+#modalLista select{width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--linea);background:var(--card);color:var(--tinta);margin:8px 0}
+@media (min-width:900px){ #modalLista{align-items:center} #modalLista .hoja{border-radius:20px} .compl-form{grid-template-columns:2fr 1fr 1fr 2fr auto;align-items:center} .compl-form .fila2{display:contents} .ase-btns button{flex:none} }
 @media print{
   @page{size:A4;margin:12mm 12mm 16mm}
   html,body,#app{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -401,6 +434,7 @@ body.modo-pdf .tscroll{overflow:visible}
       <button class="tab on" data-tab="monitores">Monitores</button>
       <button class="tab" data-tab="mis" id="tabMis">Mis datos</button>
       <button class="tab oculto" data-tab="resumen" id="tabRes">Resumen</button>
+      <button class="tab oculto" data-tab="asesoria" id="tabAse">Asesoría</button>
     </div>
   </header>
   <main id="main"></main>
@@ -513,6 +547,7 @@ function mostrarApp() {
   const yo = $('#yo'); yo.onerror = () => yo.classList.add('oculto'); yo.onload = () => yo.classList.remove('oculto'); yo.src = fotoDe(u.persona);
   $('#tabMis').classList.toggle('oculto', !u.responsables.length);
   $('#tabRes').classList.toggle('oculto', !u.admin);
+  $('#tabAse').classList.toggle('oculto', !u.admin);
   pintarMeses();
 }
 
@@ -540,7 +575,7 @@ async function entrar(codigo, silencioso) {
     store.set('inc_codigo', S.codigo); guardarCache();
     mostrarApp(); pintar(); marcarSinRed(false); actualizarAvisos();
     enviarCola();
-    precargar().then(() => { if (S.user.admin) refrescarResumen(); });
+    precargar().then(() => { if (S.user.admin) { refrescarResumen(); refrescarAsesoria(); } });
   } catch (e) {
     if (e.red && S.user) { marcarSinRed(true); return; }
     S.user = null; $('#app').classList.add('oculto'); $('#login').classList.remove('oculto');
@@ -614,8 +649,9 @@ document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
 /* ======================= LISTA DE MONITORES ======================= */
 /** Pinta lo que haya en el móvil y, si hace falta, lo refresca por detrás. */
 function pintar() {
-  $('#meses').classList.toggle('oculto', S.tab === 'resumen');
+  $('#meses').classList.toggle('oculto', S.tab === 'resumen' || S.tab === 'asesoria');
   if (S.tab === 'resumen') return pintarResumen();
+  if (S.tab === 'asesoria') return pintarAsesoria();
   if (S.tab === 'mis') return pintarMisDatosDesdeCache();
   const d = S.datos[S.mes];
   if (d) { S.datosMes = vista(d); pintarLista(); }
@@ -630,6 +666,7 @@ async function cargar(forzar) {
   const mes = S.mes, tab = S.tab, d = S.datos[mes];
   if (tab === 'mis') return refrescarMisDatos(forzar);
   if (tab === 'resumen') return refrescarResumen(forzar);
+  if (tab === 'asesoria') return refrescarAsesoria(forzar);
   if (d && !forzar && Date.now() - d._fresco < 60000) return;     // reciente: no hace falta volver a pedir
   try {
     const nuevo = fusionar(await pedirMes(mes));
@@ -1289,6 +1326,145 @@ function barrasH(items, color, dec, suf) {
   document.addEventListener('touchstart', show, {passive:true});
   document.addEventListener('scroll', () => tip.classList.remove('si'), true);
 })();
+
+
+/* ======================= ASESORÍA (solo administración) ======================= */
+S.aseDatos = {}; S.aseSolo = true; S.aseFiltro = '';
+function aseMesPorDefecto() {
+  const m = S.user.meses, hoy = S.user.mesActual;
+  return S.aseMes && m.includes(S.aseMes) ? S.aseMes : (m.includes(hoy) ? hoy : m[m.length - 1]);
+}
+async function refrescarAsesoria(forzar) {
+  const mes = aseMesPorDefecto(); S.aseMes = mes;
+  const d = S.aseDatos[mes];
+  if (d && !forzar && Date.now() - d._fresco < 30000) return;
+  try {
+    const r = await api('asesoria', { mes }); r._fresco = Date.now(); S.aseDatos[mes] = r;
+    if (S.tab === 'asesoria' && S.aseMes === mes) pintarAsesoria();
+  } catch (e) {
+    if (S.tab === 'asesoria') $('#main').innerHTML = `<div class="vacio">${esc(/Acci[oó]n desconocida/.test(e.message) ? 'Actualiza el código de Apps Script para usar la hoja de la asesoría.' : /no existe la hoja/i.test(e.message) || /_Maestro|_Codigos/.test(e.message) ? e.message : e.message)}</div>`;
+  }
+}
+const nfA = (n, dec = 2) => Math.abs(n) < 0.005 ? '' : n.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: dec });
+const celdaCopia = n => Math.abs(n) < 0.005 ? '' : String(Math.round(n * 100) / 100).replace('.', ',');
+
+function pintarAsesoria() {
+  const main = $('#main'), mes = aseMesPorDefecto(), d = S.aseDatos[mes];
+  const chips = `<div class="periodos">${S.user.meses.map(m => `<button class="per ${m===mes?'on':''}" data-am="${m}">${m}</button>`).join('')}</div>`;
+  if (!d) { main.innerHTML = chips + '<div class="cargando"><div class="spin"></div></div>'; ligarAse(); return; }
+  const T = d.totales, con = d.filas.filter(f => f.slice(2).some(x => Math.abs(x) > 0.004));
+  const grupos = {}; d.avisos.forEach(a => (grupos[a.tipo] = grupos[a.tipo] || []).push(a));
+  const TIT = { maestro:'No están en el Generador (sin nivel ni km)', codigo:'Sin código de la asesoría', lista:'Con importes pero fuera de la lista de la asesoría', baja:'Marcados como baja con datos', nivel:'Sin nivel (€/sesión)', x:'Días con «x» sin rellenar', texto:'Texto en km o peajes' };
+  const f = S.aseFiltro.toLowerCase();
+  const visibles = (S.aseSolo ? con : d.filas).filter(r => !f || String(r[1]).toLowerCase().includes(f) || String(r[0]).includes(f));
+  const nombres = d.filas.map(r => `<option value="${esc(r[0])} · ${esc(r[1])}">`).join('');
+  main.innerHTML = `
+    ${chips}
+    <div class="tarjeta ase-cab">
+      <h3>Hoja de la asesoría · ${esc(mes)}
+        <span class="sub">Lista de la asesoría: ${esc(d.ordenMes || '—')} · ${d.filas.length} personas · <button id="aseLista">Actualizar lista</button></span></h3>
+      ${d.avisos.length ? `<span class="pill-pend">⚠ ${d.avisos.length} para revisar</span>` : '<span class="pill-ok">✓ Sin avisos</span>'}
+    </div>
+    <div class="kpis">
+      ${kpi((nfA(T[1])||'0')+' €','285 · Sábados','', 'var(--azul)')}
+      ${kpi((nfA(T[2])||'0')+' €','265 · Ausencias','', 'var(--c-aus)')}
+      ${kpi((nfA(T[3])||'0')+' €','219 · Complemento','', 'var(--c-sus)')}
+      ${kpi((nfA(T[4],0)||'0')+' km','214 · Kilometraje','', 'var(--azul)')}
+      ${kpi((nfA(T[5])||'0')+' €','606 · Peajes','', 'var(--azul)')}
+      ${kpi(String(con.length),'Personas con importes','', 'var(--azul)')}
+    </div>
+    <div class="ase-btns">
+      <button class="pri" id="aseCopiar">📋 Copiar para la asesoría</button>
+      <button id="aseCopiarTodo">Copiar con código y nombre</button>
+      <button id="aseCsv">⬇ Descargar CSV</button>
+    </div>
+    <p class="ase-nota">«Copiar para la asesoría» copia las 6 columnas (397 a 606) de las ${d.filas.length} personas en el orden de su hoja: pégalo en la celda <b>D8</b>.</p>
+    ${d.avisos.length ? `<details class="tarjeta recs avisos" open><summary><span>🔎 Revisar</span><span class="pill-pend">${d.avisos.length}</span></summary>
+      ${Object.entries(grupos).map(([t, l]) => `<h4>${esc(TIT[t] || t)} (${l.length})</h4><ul>${l.map(a => `<li><b>${esc(a.persona)}</b>${a.grupo ? ' · ' + esc(titulo(a.grupo)) : ''}${t==='maestro'||t==='codigo'||t==='lista'?'':' — ' + esc(a.texto)}</li>`).join('')}</ul>`).join('')}
+      ${grupos.maestro ? '<p class="ase-nota" style="margin:0">Añade a los que no están en el Generador en la pestaña <b>_Maestro</b> de la Excel (nivel y km por viaje).</p>' : ''}
+    </details>` : ''}
+    <details class="tarjeta recs" ${S._complAbierto || d.complementos.length ? 'open' : ''} id="complBox">
+      <summary><span>➕ Complementos de administración</span><span class="${d.complementos.length?'pill-pend':'al-dia'}">${d.complementos.length ? d.complementos.length + ' este mes' : 'Ninguno'}</span></summary>
+      <p class="ase-nota" style="margin-top:8px">Solo tú lo ves. Se suma al 219 (complemento) o al 214 (plus distancia, en km) de esa persona y queda registrado.</p>
+      <div class="compl-form">
+        <input id="cPersona" list="cNombres" placeholder="Persona (escribe para buscar)"><datalist id="cNombres">${nombres}</datalist>
+        <div class="fila2"><select id="cTipo"><option>Complemento (€)</option><option>Plus distancia (km)</option></select>
+        <input id="cCant" inputmode="decimal" placeholder="Cantidad"></div>
+        <input id="cMotivo" placeholder="Motivo (ej. formación 12/11)">
+        <button class="btn" id="cAdd" style="padding:11px 16px">Añadir</button>
+      </div>
+      <div class="compl-lista">${d.complementos.map(c => `<div class="compl"><div><b>${esc(c.nombre)}</b><span>${esc(c.motivo || 'Sin motivo')} · ${c.fecha ? new Date(c.fecha).toLocaleDateString('es-ES') : ''}${c.por ? ' · ' + esc(c.por) : ''}</span></div>
+        <span class="imp">${nfA(c.cantidad)} ${c.tipo === 'Plus distancia (km)' ? 'km' : '€'}</span><button data-cdel="${esc(c.id)}" aria-label="Borrar">✕</button></div>`).join('')}</div>
+    </details>
+    <div class="tarjeta">
+      <div class="ase-filtros"><input id="aseBuscar" placeholder="Buscar por nombre o código…" value="${esc(S.aseFiltro)}">
+        <label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="aseSolo" ${S.aseSolo?'checked':''}> Solo con importes</label></div>
+      <div class="tscroll"><table class="tabla">
+        <thead><tr><th>Persona</th><th>285 Sáb. €</th><th>265 Aus. €</th><th>219 Comp. €</th><th>214 Km</th><th>606 Peaj. €</th></tr></thead>
+        <tbody>${visibles.map(r => filaAse(r, false)).join('')}${d.extras.map(r => filaAse(r, true)).join('')}</tbody>
+        <tfoot><tr><td>Total</td><td>${nfA(T[1])}</td><td>${nfA(T[2])}</td><td>${nfA(T[3])}</td><td>${nfA(T[4],0)}</td><td>${nfA(T[5])}</td></tr></tfoot>
+      </table></div>
+      ${!visibles.length ? '<p class="ayuda">No hay importes en este mes todavía.</p>' : ''}
+    </div>
+    <p class="meta">Calculado con los datos de la Excel a las ${new Date(d._fresco).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</p>`;
+  ligarAse();
+}
+function filaAse(r, extra) {
+  const v = r.slice(2);
+  return `<tr class="${extra?'extra':''}"><td>${esc(r[1])}<br><span class="cod">${esc(r[0] || 'sin código')}${extra ? ' · fuera de la lista' : ''}</span></td>${[1,2,3,4,5].map(i => `<td class="${Math.abs(v[i])<0.005?'cero':''}">${nfA(v[i], i===4?2:2) || '–'}</td>`).join('')}</tr>`;
+}
+function ligarAse() {
+  const main = $('#main');
+  main.querySelectorAll('[data-am]').forEach(b => b.onclick = () => { S.aseMes = b.dataset.am; pintarAsesoria(); refrescarAsesoria(); });
+  const d = S.aseDatos[aseMesPorDefecto()]; if (!d) return;
+  $('#aseCopiar').onclick = () => copiar(d.filas.map(r => r.slice(2).map(celdaCopia).join('\t')).join('\n'), `Copiadas ${d.filas.length} filas · pega en D8`);
+  $('#aseCopiarTodo').onclick = () => copiar(d.filas.concat(d.extras).map(r => [r[0], r[1]].concat(r.slice(2).map(celdaCopia)).join('\t')).join('\n'), 'Copiado con código y nombre');
+  $('#aseCsv').onclick = () => {
+    const cab = 'Código;Nombre;397 - Plus Tra;285 - Sábados;265 - Ausencias;219 - Complemento;214 - Kilometraje;606 - Peajes';
+    const txt = '﻿' + [cab].concat(d.filas.concat(d.extras).map(r => [r[0], '"' + String(r[1]).replace(/"/g,'""') + '"'].concat(r.slice(2).map(celdaCopia)).join(';'))).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type:'text/csv;charset=utf-8' })); a.download = `Asesoria ${d.mes}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  };
+  $('#aseLista').onclick = () => modalLista();
+  const bus = $('#aseBuscar'); bus.oninput = () => { S.aseFiltro = bus.value; const pos = bus.selectionStart; pintarAsesoria(); const nb = $('#aseBuscar'); nb.focus(); nb.setSelectionRange(pos, pos); };
+  $('#aseSolo').onchange = e => { S.aseSolo = e.target.checked; pintarAsesoria(); };
+  const cb = $('#complBox'); cb.ontoggle = () => { S._complAbierto = cb.open; };
+  $('#cAdd').onclick = async () => {
+    const txt = $('#cPersona').value.trim(), cod = (txt.match(/^(\d+)/) || [])[1], cant = aNum($('#cCant').value);
+    if (!cod) return toast('Elige la persona de la lista', true);
+    if (!cant) return toast('Pon la cantidad', true);
+    const nombre = txt.replace(/^\d+\s*·\s*/, '');
+    const b = $('#cAdd'); b.disabled = true;
+    try { await api('complemento', { mes:d.mes, codigoAsesoria:cod, nombre, tipo:$('#cTipo').value, cantidad:cant, motivo:$('#cMotivo').value.trim() }); S._complAbierto = true; toast('Complemento añadido ✓'); await refrescarAsesoria(true); }
+    catch (e) { toast(e.message, true); } finally { b.disabled = false; }
+  };
+  main.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => {
+    if (!confirm('¿Borrar este complemento?')) return;
+    try { await api('complemento', { borrar: b.dataset.cdel }); toast('Borrado'); await refrescarAsesoria(true); } catch (e) { toast(e.message, true); }
+  });
+}
+async function copiar(texto, msg) {
+  try { await navigator.clipboard.writeText(texto); toast(msg + ' ✓'); return; } catch (e) {}
+  const t = document.createElement('textarea'); t.value = texto; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select();
+  try { document.execCommand('copy'); toast(msg + ' ✓'); } catch (e) { toast('No se pudo copiar', true); } t.remove();
+}
+function modalLista() {
+  const w = document.createElement('div'); w.id = 'modalLista';
+  w.innerHTML = `<div class="hoja"><h3 style="margin:0 0 6px">Actualizar la lista de la asesoría</h3>
+    <p class="ase-nota">En el Excel que te manda la asesoría, selecciona las columnas <b>Código</b> y <b>Nombre</b> (desde la fila 8 hasta el final), copia y pega aquí. La app ordenará los importes igual que su hoja.</p>
+    <select id="lMes">${S.user.meses.map(m => `<option ${m===aseMesPorDefecto()?'selected':''}>${m}</option>`).join('')}</select>
+    <textarea id="lTxt" placeholder="20553	AGESTA MENDIBURU, AITOR&#10;20457	AGUINAGA SORIA, RAUL&#10;…"></textarea>
+    <p class="ase-nota" id="lInfo"></p>
+    <button class="btn" id="lOk">Guardar lista</button><button class="btn sec" id="lNo" style="margin-top:8px">Cancelar</button></div>`;
+  document.body.appendChild(w);
+  const parse = () => $('#lTxt').value.split(/\r?\n/).map(l => l.split('\t')).map(c => [String(c[0]||'').trim().replace(/\.0$/,''), String(c[1]||'').trim()]).filter(c => /^\d+$/.test(c[0]));
+  $('#lTxt').oninput = () => { $('#lInfo').textContent = parse().length + ' personas detectadas'; };
+  $('#lNo').onclick = () => w.remove(); w.onclick = e => { if (e.target === w) w.remove(); };
+  $('#lOk').onclick = async () => {
+    const lista = parse(); if (lista.length < 5) return toast('No detecto la lista: copia las columnas Código y Nombre', true);
+    try { await api('ordenAsesoria', { lista, mes: $('#lMes').value }); w.remove(); toast('Lista guardada ✓'); S.aseDatos = {}; refrescarAsesoria(true); }
+    catch (e) { toast(e.message, true); }
+  };
+}
 
 /* ======================= MENÚ / INSTALAR ======================= */
 let eventoInstalar = null;

@@ -1,6 +1,6 @@
 // La app abre al instante desde la caché del móvil y se actualiza por detrás.
 // Los datos siempre se piden a la hoja (la API nunca se cachea).
-const CACHE = 'incidencias-v13';
+const CACHE = 'incidencias-v14';
 const ARCHIVOS = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './icon-maskable-512.png', './apple-touch-icon.png', './fotos/equipo.jpg', './fotos/equipo-movil.jpg',
   './logos/fo-blanco.png', './logos/fo-color.png', './logos/escudo-color.png', './logos/escudo-blanco.png', './lib/html2canvas.min.js', './lib/jspdf.umd.min.js'];

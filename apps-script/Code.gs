@@ -102,7 +102,7 @@ function filasCache_(nombre) {
     return filas_(hoja_(nombre)).map(function (r) { return r.map(function (v) { return v instanceof Date ? { d: v.getTime() } : v; }); });
   });
 }
-function limpiarCache_() { CacheService.getScriptCache().removeAll(['f__Accesos', 'f__Monitores', 'f__Festivos', 'f__Ajustes']); }
+function limpiarCache_() { CacheService.getScriptCache().removeAll(['f__Accesos', 'f__Monitores', 'f__Festivos', 'f__Ajustes', 'f__Codigos', 'f__Maestro', 'f__Coordinadores']); }
 
 function ajustes_() {
   var out = { TEMPORADA_INICIO: 2026, MESES_CERRADOS: '' };
@@ -259,6 +259,7 @@ function configurarInicial() {
   }
   hoja_('_Dias', H_DIAS);
   hoja_('_Registro', H_REGISTRO);
+  try { if (typeof datosAsesoria_ === 'function') cargarDatosAsesoria(); } catch (e) { }
   limpiarCache_();
   return 'Configuración lista: ' + orden.length + ' monitores y ' + filasAcc.length + ' accesos nuevos.' +
     (movidas.length ? ' Movidas a esta hoja privada: ' + movidas.join(', ') + '.' : '');
@@ -446,7 +447,7 @@ function diasGuardados_(mes, grupo) {
 function datosMesTodos_(mes, aj) {
   var hm = datosHojaMes_(mes), fijos = fijosMap_(), c = hm.c, y = anioDeMes_(mes, aj), mn = MES_NUM[mes];
   if (!c) return { anio: y, mesNum: mn, grupos: {} };
-  var todosDias = diasGuardados_(mes, null), grupos = [], porGrupo = {};
+  var todosDias = diasGuardados_(mes, null), grupos = [], porGrupo = {}, bajas = bajas_();
   hm.filas.forEach(function (x) { var g = String(x.r[c.grupo]).trim(); if (grupos.indexOf(g) < 0) grupos.push(g); });
   grupos.forEach(function (g) {
     var dias = todosDias[norm_(g)] || {};
@@ -473,9 +474,163 @@ function datosMesTodos_(mes, aj) {
         .some(function (col) { var v = r[col]; return v !== '' && v != null && String(v).toLowerCase() !== 'x'; });
       m.estado = d ? 'guardado' : (conDatos ? 'enhoja' : 'pendiente');
       return m;
-    });
+    }).filter(function (m) { return !(m.estado === 'pendiente' && bajas[nN_(m.nombre + ' ' + m.ap1 + ' ' + m.ap2)]); });
   });
   return { anio: y, mesNum: mn, grupos: porGrupo };
+}
+
+
+// ================================================================ ASESORÍA (cierre mensual automático)
+// Replica el Generador_de_observaciones: viajes × km por viaje + km especiales (214),
+// sábados/ausencias/sustituciones × nivel (285/265/219), peajes (606). 397 vacío.
+var H_MAESTRO = ['Responsable', 'Nombre', 'Primer apellido', 'Segundo apellido', 'Nivel (€/sesión)', 'Km/viaje L', 'Km/viaje M', 'Km/viaje X', 'Km/viaje J', 'Km/viaje V'];
+var H_CODIGOS = ['Nombre completo', 'Nombre asesoría (APELLIDOS, Nombre)', 'Código asesoría', 'Estado (OK / Baja)', 'Nota'];
+var H_COORD = ['Nombre en hoja Responsables', 'Nombre asesoría', 'Código asesoría', 'Tarifa (€/sesión)'];
+var H_ORDEN = ['Código', 'Nombre (asesoría)'];
+var H_AJ_AS = ['Mes', 'Código', 'Nombre', 'Tipo', 'Cantidad', 'Motivo', 'Fecha', 'Por', 'Id'];
+var TIPO_COMPLEMENTO = 'Complemento (€)', TIPO_PLUS = 'Plus distancia (km)';
+
+/** Carga (una vez) las pestañas de la asesoría con los datos de DatosAsesoria.gs. No pisa lo que ya exista. */
+function cargarDatosAsesoria() {
+  if (typeof datosAsesoria_ !== 'function') throw new Error('Falta el archivo DatosAsesoria.gs en el proyecto.');
+  var d = datosAsesoria_(), hechos = [];
+  function llenar(nombre, cab, filas) {
+    var sh = hoja_(nombre, cab);
+    if (sh.getLastRow() > 1 || !filas.length) return;
+    sh.getRange(2, 1, filas.length, cab.length).setValues(filas.map(function (r) { var x = r.slice(0, cab.length); while (x.length < cab.length) x.push(''); return x; }));
+    hechos.push(nombre + ' (' + filas.length + ')');
+  }
+  llenar('_Maestro', H_MAESTRO, d.maestro);
+  llenar('_Codigos', H_CODIGOS, d.codigos);
+  llenar('_Coordinadores', H_COORD, d.coordinadores);
+  llenar('_OrdenAsesoria', H_ORDEN, d.orden);
+  hoja_('_ComplementosAsesoria', H_AJ_AS);
+  var aj = hoja_('_Ajustes', H_AJUSTES), tiene = filas_(aj).some(function (r) { return r[0] === 'ORDEN_ASESORIA_MES'; });
+  if (!tiene) aj.appendRow(['ORDEN_ASESORIA_MES', d.ordenMes || '', 'Mes de la última lista de la asesoría cargada']);
+  limpiarCache_();
+  return hechos.length ? 'Cargado: ' + hechos.join(', ') : 'Las pestañas ya tenían datos; no se ha cambiado nada.';
+}
+
+function numTexto_(v) {
+  if (typeof v === 'number') return { n: v, texto: false };
+  var s = String(v == null ? '' : v).trim();
+  if (!s) return { n: 0, texto: false };
+  var m = s.replace('€', '').match(/-?\d+(?:[.,]\d+)?/);
+  return { n: m ? parseFloat(m[0].replace(',', '.')) : 0, texto: true };
+}
+function nN_(t) { return norm_(t).replace(/[^A-Z ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+function redondea_(x) { return Math.round(x * 100) / 100; }
+
+/** Índices de códigos: por nombre completo y por nombre de la asesoría. */
+function indicesCodigos_() {
+  var porCompleto = {}, porAses = {};
+  filasCache_('_Codigos').forEach(function (r) {
+    if (!r[0] && !r[1]) return;
+    var o = { codigo: String(r[2] || '').trim(), ases: String(r[1] || '').trim(), estado: norm_(r[3]) === 'BAJA' ? 'Baja' : 'OK', completo: String(r[0] || '').trim() };
+    if (r[0]) porCompleto[nN_(r[0])] = o;
+    if (r[1]) porAses[nN_(r[1])] = o;
+  });
+  return { completo: porCompleto, ases: porAses };
+}
+function codigoDe_(idx, nombre, ap1, ap2) {
+  return idx.completo[nN_(nombre + ' ' + ap1 + ' ' + ap2)] || idx.ases[nN_(ap1 + ' ' + ap2 + ', ' + nombre)] || null;
+}
+/** Personas de baja (para no mostrarlas en la app). */
+function bajas_() {
+  var b = {};
+  filasCache_('_Codigos').forEach(function (r) { if (norm_(r[3]) === 'BAJA' && r[0]) b[nN_(r[0])] = 1; });
+  return b;
+}
+
+function calcularAsesoria_(mes) {
+  var aj = ajustes_(), sh = ss_().getSheetByName(mes);
+  if (!sh) throw new Error('Todavía no existe la hoja de ' + mes + '.');
+  var c = columnasMes_(sh), idx = indicesCodigos_();
+  var kR = {}, kP = {};
+  filasCache_('_Maestro').forEach(function (r) {
+    if (!r[1]) return;
+    var m = { nivel: numTexto_(r[4]).n, nivelOk: r[4] !== '' && r[4] != null, km: [5, 6, 7, 8, 9].map(function (i) { return numTexto_(r[i]).n; }) };
+    kR[nN_(r[0]) + '|' + nN_(r[1] + ' ' + r[2] + ' ' + r[3])] = m;
+    var kp = nN_(r[1] + ' ' + r[2] + ' ' + r[3]); if (!kP[kp]) kP[kp] = m;
+  });
+  var porCod = {}, avisos = [], personas = {};
+  function acumula(clave, nombre, v) {
+    var t = porCod[clave] || (porCod[clave] = { nombre: nombre, v: [0, 0, 0, 0, 0, 0] });
+    for (var i = 0; i < 6; i++) t.v[i] += v[i];
+  }
+  function aviso(tipo, texto, quien, grupo) { avisos.push({ tipo: tipo, texto: texto, persona: quien || '', grupo: grupo || '' }); }
+
+  filas_(sh).forEach(function (r) {
+    if (!r[c.grupo] || !r[c.nombre]) return;
+    var g = String(r[c.grupo]).trim(), n = String(r[c.nombre]).trim(), a1 = String(r[c.ap1] || '').trim(), a2 = String(r[c.ap2] || '').trim();
+    var quien = (n + ' ' + a1 + ' ' + a2).trim();
+    var m = kR[nN_(g) + '|' + nN_(n + ' ' + a1 + ' ' + a2)] || kP[nN_(n + ' ' + a1 + ' ' + a2)];
+    var viajes = c.dias.map(function (col) { return typeof r[col] === 'number' ? r[col] : 0; });
+    var conX = c.dias.filter(function (col) { return String(r[col]).trim().toLowerCase() === 'x'; }).length;
+    var sab = numTexto_(r[c.partidos]).n, aus = numTexto_(r[c.ausencias]).n, sus = numTexto_(r[c.sust]).n;
+    var esp = numTexto_(r[c.km]), pea = numTexto_(r[c.peajes]);
+    var hayAlgo = viajes.some(Boolean) || sab || aus || sus || esp.n || pea.n;
+    var cod = codigoDe_(idx, n, a1, a2);
+    if (cod && cod.estado === 'Baja' && hayAlgo) aviso('baja', 'Marcado como baja pero tiene datos este mes. Si corresponde pagarlo y no está en la lista de la asesoría, añádelo a mano', quien, g);
+    if (!m) aviso('maestro', 'No está en el Generador: sin nivel ni km por viaje', quien, g);
+    if (conX) aviso('x', 'Días con «x» sin rellenar (cuentan como 0 viajes)', quien, g);
+    if (esp.texto) aviso('texto', 'Km especiales escritos como texto, leído ' + esp.n, quien, g);
+    if (pea.texto) aviso('texto', 'Peajes escritos como texto, leído ' + pea.n, quien, g);
+    var nivel = m ? m.nivel : 0, km = m ? m.km : [0, 0, 0, 0, 0];
+    if ((sab || aus || sus) && !(m && m.nivelOk)) aviso('nivel', 'Tiene sábados/ausencias/sustituciones pero no tiene nivel (€/sesión)', quien, g);
+    var kmViajes = 0; for (var i = 0; i < 5; i++) kmViajes += km[i] * viajes[i];
+    var v = [0, sab * nivel, -(aus * nivel), sus * nivel, kmViajes + esp.n, pea.n];
+    if (!cod || !cod.codigo) { if (hayAlgo) aviso('codigo', 'Sin código de la asesoría', quien, g); acumula('SIN|' + nN_(quien), (a1 + ' ' + a2 + ', ' + n).toUpperCase(), v); }
+    else acumula(cod.codigo, cod.ases, v);
+    personas[cod && cod.codigo ? cod.codigo : quien] = 1;
+  });
+
+  // coordinadores (pestaña Responsables)
+  var shR = ss_().getSheetByName('Responsables'), filasR = filas_(shR), M = norm_(mes);
+  filasCache_('_Coordinadores').forEach(function (cr) {
+    if (!cr[0]) return;
+    var km = 0, par = 0, sust = 0, pea = 0, hay = false;
+    filasR.forEach(function (r) {
+      if (norm_(r[0]) === M && nN_(r[1]) === nN_(cr[0])) { hay = true; km += numTexto_(r[2]).n; par += numTexto_(r[3]).n; sust += numTexto_(r[4]).n; pea += numTexto_(r[6]).n; }
+    });
+    var t = numTexto_(cr[3]).n, cod = String(cr[2] || '').trim();
+    var v = [0, par * t, -(Math.max(-sust, 0) * t), Math.max(sust, 0) * t, km, pea];
+    if (!cod) { if (hay && (km || par || sust || pea)) aviso('codigo', 'Coordinador sin código de la asesoría', String(cr[0]), 'Coordinadores'); acumula('SIN|' + nN_(cr[0]), String(cr[1] || cr[0]).toUpperCase(), v); }
+    else acumula(cod, String(cr[1] || cr[0]), v);
+  });
+
+  // complementos y plus distancia puestos a mano por administración
+  var complementos = [];
+  filas_(hoja_('_ComplementosAsesoria', H_AJ_AS)).forEach(function (r) {
+    if (norm_(r[0]) !== M || !r[1]) return;
+    var cant = numTexto_(r[4]).n, cod = String(r[1]).trim();
+    var v = [0, 0, 0, 0, 0, 0];
+    if (r[3] === TIPO_PLUS) v[4] = (cant * 0.05) / 0.17; else v[3] = cant;
+    acumula(cod, String(r[2] || ''), v);
+    complementos.push({ id: String(r[8] || ''), codigo: cod, nombre: String(r[2] || ''), tipo: r[3] || TIPO_COMPLEMENTO, cantidad: cant, motivo: String(r[5] || ''),
+      fecha: r[6] instanceof Date ? r[6].toISOString() : String(r[6] || ''), por: String(r[7] || '') });
+  });
+
+  // ordenar como la lista de la asesoría
+  var orden = filas_(hoja_('_OrdenAsesoria', H_ORDEN)).filter(function (r) { return r[0] !== '' && r[0] != null; }), enOrden = {};
+  var filas = orden.map(function (r) {
+    var cod = String(r[0]).trim(); enOrden[cod] = 1;
+    var t = porCod[cod];
+    return [cod, String(r[1] || (t && t.nombre) || '')].concat((t ? t.v : [0, 0, 0, 0, 0, 0]).map(redondea_));
+  });
+  var extras = [];
+  Object.keys(porCod).forEach(function (k) {
+    if (enOrden[k]) return;
+    var t = porCod[k];
+    if (!t.v.some(function (x) { return Math.abs(x) > 0.004; })) return;
+    extras.push([k.indexOf('SIN|') === 0 ? '' : k, t.nombre].concat(t.v.map(redondea_)));
+    var esBaja = idx.ases[nN_(t.nombre)] && idx.ases[nN_(t.nombre)].estado === 'Baja';
+    if (k.indexOf('SIN|') !== 0 && !esBaja) aviso('lista', 'Tiene importes pero no está en la lista de la asesoría (código ' + k + ')', t.nombre, '');
+  });
+  var tot = [0, 0, 0, 0, 0, 0];
+  filas.concat(extras).forEach(function (f) { for (var i = 0; i < 6; i++) tot[i] += f[2 + i]; });
+  return { mes: mes, ordenMes: String(aj.ORDEN_ASESORIA_MES || ''), filas: filas, extras: extras, avisos: avisos,
+    totales: tot.map(redondea_), personas: Object.keys(personas).length, complementos: complementos };
 }
 
 // ---------------------------------------------------------------- bloqueo (reentrante dentro de una misma llamada)
@@ -570,6 +725,54 @@ var ACCIONES = {
       lista.forEach(function (m) { invalidarMes_(m); });
       log_(u.persona, p.cerrar ? 'Bloquear' : 'Desbloquear', lista.join(', '));
       return { cerrados: MESES.filter(function (m) { return set[m]; }) };
+    });
+  },
+
+  /** Hoja de la asesoría del mes, calculada (solo administración). */
+  asesoria: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    comprobarMes_(p.mes, ajustes_(), false);
+    return calcularAsesoria_(p.mes);
+  },
+
+  /** Guardar la lista (código + nombre) de la asesoría, en su orden. */
+  ordenAsesoria: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    var lista = (p.lista || []).filter(function (r) { return r && String(r[0]).trim(); });
+    if (lista.length < 5) throw new Error('La lista parece incompleta (' + lista.length + ' filas).');
+    return conBloqueo_(function () {
+      var sh = hoja_('_OrdenAsesoria', H_ORDEN);
+      if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).clearContent();
+      sh.getRange(2, 1, lista.length, 2).setValues(lista.map(function (r) { return [String(r[0]).trim(), String(r[1] || '').trim()]; }));
+      var aj = hoja_('_Ajustes', H_AJUSTES), f = filas_(aj), hecho = false;
+      for (var i = 0; i < f.length; i++) if (f[i][0] === 'ORDEN_ASESORIA_MES') { aj.getRange(i + 2, 2).setValue(p.mes || ''); hecho = true; }
+      if (!hecho) aj.appendRow(['ORDEN_ASESORIA_MES', p.mes || '', 'Mes de la última lista de la asesoría cargada']);
+      limpiarCache_();
+      log_(u.persona, 'Lista asesoría', (p.mes || '') + ' · ' + lista.length + ' personas');
+      return { filas: lista.length };
+    });
+  },
+
+  /** Añadir o borrar un complemento / plus distancia manual (solo administración). */
+  complemento: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    return conBloqueo_(function () {
+      var sh = hoja_('_ComplementosAsesoria', H_AJ_AS);
+      if (p.borrar) {
+        var f = filas_(sh);
+        for (var i = f.length - 1; i >= 0; i--) if (String(f[i][8]) === String(p.borrar)) { sh.deleteRow(i + 2); log_(u.persona, 'Borrar complemento', f[i][2] + ' ' + f[i][4]); return { ok: true }; }
+        throw new Error('No encontrado.');
+      }
+      if (MESES.indexOf(p.mes) < 0) throw new Error('Mes no válido.');
+      var cant = numTexto_(p.cantidad).n;
+      if (!p.codigoAsesoria || !cant) throw new Error('Falta la persona o la cantidad.');
+      var id = Utilities.getUuid ? Utilities.getUuid() : String(Date.now());
+      sh.appendRow([p.mes, String(p.codigoAsesoria), p.nombre || '', p.tipo === TIPO_PLUS ? TIPO_PLUS : TIPO_COMPLEMENTO, cant, p.motivo || '', new Date(), u.persona, id]);
+      log_(u.persona, 'Complemento', p.mes + ' · ' + p.nombre + ' · ' + cant);
+      return { id: id };
     });
   },
 
@@ -713,9 +916,11 @@ function onOpen() {
     .addItem('Configurar / actualizar hojas de la app', 'menuConfigurar_')
     .addItem('Crear hoja del mes siguiente', 'menuMesSiguiente_')
     .addItem('Cargar festivos del calendario 26-27', 'menuFestivos_')
+    .addItem('Cargar datos de la asesoría (Generador)', 'menuAsesoria_')
     .addItem('Aplicar cambios de configuración ya', 'limpiarCache_')
     .addToUi();
 }
+function menuAsesoria_() { SpreadsheetApp.getUi().alert(cargarDatosAsesoria()); }
 function menuFestivos_() { SpreadsheetApp.getUi().alert(cargarFestivosCalendario()); }
 function menuMesSiguiente_() {
   var ss = ss_(), ultimo = -1;
