@@ -373,6 +373,15 @@ body.modo-pdf .tscroll{overflow:visible}
 .ase-filtros{display:flex;gap:8px;align-items:center;margin:0 0 8px;flex-wrap:wrap}
 .ase-filtros input{flex:1;min-width:160px;padding:10px 12px;border:1.5px solid var(--linea);border-radius:10px;background:var(--card);color:var(--tinta)}
 .tabla tr.extra td{background:var(--rec-bg)}
+b.rojo,.rojo{color:var(--c-aus)}
+b.verde{color:var(--verde)}
+.pill-rojo{color:var(--c-aus)!important;background:var(--rojo-suave)!important}
+.conf-barra{font-size:13px;padding:12px 14px}
+.lav{list-style:none;padding:0!important}
+.lav li{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:7px 0;border-top:1px solid var(--linea)}
+.lav li span{color:var(--gris);font-size:12px}
+.okrev{flex:none;font-size:12px;font-weight:800;color:var(--verde);background:var(--verde-suave);padding:7px 10px;border-radius:9px}
+.okrev.des{color:var(--gris);background:var(--fondo)}
 .tabla td.cero{color:var(--linea)}
 .tabla .cod{color:var(--gris);font-size:12px;font-variant-numeric:tabular-nums}
 #modalLista{position:fixed;inset:0;z-index:70;background:rgba(10,15,27,.55);display:flex;align-items:flex-end;justify-content:center}
@@ -1349,22 +1358,41 @@ async function refrescarAsesoria(forzar) {
 const nfA = (n, dec = 2) => Math.abs(n) < 0.005 ? '' : n.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: dec });
 const celdaCopia = n => Math.abs(n) < 0.005 ? '' : String(Math.round(n * 100) / 100).replace('.', ',');
 
+function estadoPersona(d, cod) {
+  const e = (d.estados || {})[cod];
+  const av = d.avisos.filter(a => !a.revisado && a.codigo && a.codigo === String(cod)).length;
+  if (av) return 'rev';
+  if (!e) return '';
+  if (e.coord) return 'coord';
+  if (e.total && e.ok >= e.total) return 'ok';
+  return e.total ? 'pend' : '';
+}
 function pintarAsesoria() {
   const main = $('#main'), mes = aseMesPorDefecto(), d = S.aseDatos[mes];
   const chips = `<div class="periodos">${S.user.meses.map(m => `<button class="per ${m===mes?'on':''}" data-am="${m}">${m}</button>`).join('')}</div>`;
   if (!d) { main.innerHTML = chips + '<div class="cargando"><div class="spin"></div></div>'; ligarAse(); return; }
   const T = d.totales, con = d.filas.filter(f => f.slice(2).some(x => Math.abs(x) > 0.004));
-  const grupos = {}; d.avisos.forEach(a => (grupos[a.tipo] = grupos[a.tipo] || []).push(a));
+  const pendientes = d.avisos.filter(a => !a.revisado), revisados = d.avisos.filter(a => a.revisado);
+  const grupos = {}; pendientes.forEach(a => (grupos[a.tipo] = grupos[a.tipo] || []).push(a));
   const TIT = { maestro:'No están en el Generador (sin nivel ni km)', codigo:'Sin código de la asesoría', lista:'Con importes pero fuera de la lista de la asesoría', baja:'Marcados como baja con datos', nivel:'Sin nivel (€/sesión)', x:'Días con «x» sin rellenar', texto:'Texto en km o peajes' };
-  const f = S.aseFiltro.toLowerCase();
-  const visibles = (S.aseSolo ? con : d.filas).filter(r => !f || String(r[1]).toLowerCase().includes(f) || String(r[0]).includes(f));
+  // estado de confirmación de los responsables
+  const est = d.filas.map(r => estadoPersona(d, r[0]));
+  const nOk = est.filter(e => e === 'ok').length, nPend = est.filter(e => e === 'pend').length;
+  const F = S.aseVista || 'importes', f = S.aseFiltro.toLowerCase();
+  const visibles = d.filas.map((r, i) => [r, est[i]]).filter(([r, e]) =>
+    (F === 'todos' || (F === 'importes' && (r.slice(2).some(x => Math.abs(x) > 0.004) || e === 'rev')) || (F === 'revisar' && e === 'rev') || (F === 'pendientes' && e === 'pend'))
+    && (!f || String(r[1]).toLowerCase().includes(f) || String(r[0]).includes(f)));
   const nombres = d.filas.map(r => `<option value="${esc(r[0])} · ${esc(r[1])}">`).join('');
   main.innerHTML = `
     ${chips}
     <div class="tarjeta ase-cab">
       <h3>Hoja de la asesoría · ${esc(mes)}
-        <span class="sub">Lista de la asesoría: ${esc(d.ordenMes || '—')} · ${d.filas.length} personas · <button id="aseLista">Actualizar lista</button></span></h3>
-      ${d.avisos.length ? `<span class="pill-pend">⚠ ${d.avisos.length} para revisar</span>` : '<span class="pill-ok">✓ Sin avisos</span>'}
+        <span class="sub">Lista de la asesoría: ${esc(d.ordenMes || '—')} · ${d.filas.length} personas · <button id="aseLista">Actualizar lista</button> · <button id="aseRecalc">↻ Recalcular</button></span></h3>
+      ${pendientes.length ? `<span class="pill-pend pill-rojo">⚠ ${pendientes.length} para revisar</span>` : '<span class="pill-ok">✓ Sin avisos</span>'}
+    </div>
+    <div class="conf-barra tarjeta">
+      <div><b style="color:var(--verde)">✓ ${nOk}</b> confirmados por los responsables · <b>${nPend}</b> sin confirmar</div>
+      <div class="barra"><i style="width:${(nOk + nPend) ? nOk / (nOk + nPend) * 100 : 0}%"></i></div>
     </div>
     <div class="kpis">
       ${kpi((nfA(T[1])||'0')+' €','285 · Sábados','', 'var(--azul)')}
@@ -1380,9 +1408,10 @@ function pintarAsesoria() {
       <button id="aseCsv">⬇ Descargar CSV</button>
     </div>
     <p class="ase-nota">«Copiar para la asesoría» copia las 6 columnas (397 a 606) de las ${d.filas.length} personas en el orden de su hoja: pégalo en la celda <b>D8</b>.</p>
-    ${d.avisos.length ? `<details class="tarjeta recs avisos" open><summary><span>🔎 Revisar</span><span class="pill-pend">${d.avisos.length}</span></summary>
-      ${Object.entries(grupos).map(([t, l]) => `<h4>${esc(TIT[t] || t)} (${l.length})</h4><ul>${l.map(a => `<li><b>${esc(a.persona)}</b>${a.grupo ? ' · ' + esc(titulo(a.grupo)) : ''}${t==='maestro'||t==='codigo'||t==='lista'?'':' — ' + esc(a.texto)}</li>`).join('')}</ul>`).join('')}
-      ${grupos.maestro ? '<p class="ase-nota" style="margin:0">Añade a los que no están en el Generador en la pestaña <b>_Maestro</b> de la Excel (nivel y km por viaje).</p>' : ''}
+    ${pendientes.length || revisados.length ? `<details class="tarjeta recs avisos" ${pendientes.length ? 'open' : ''}><summary><span>🔎 Revisar</span><span class="${pendientes.length?'pill-pend pill-rojo':'al-dia'}">${pendientes.length || '✓ Todo revisado'}</span></summary>
+      ${Object.entries(grupos).map(([t, l]) => `<h4>${esc(TIT[t] || t)} (${l.length})</h4><ul class="lav">${l.map(a => `<li><div><b class="rojo">${esc(a.persona)}</b>${a.grupo ? ' · ' + esc(titulo(a.grupo)) : ''}${t==='maestro'||t==='codigo'||t==='lista'?'':'<br><span>' + esc(a.texto) + '</span>'}</div><button class="okrev" data-rev="${esc(a.clave)}" data-per="${esc(a.persona)}" data-txt="${esc(a.texto)}">✓ Revisado</button></li>`).join('')}</ul>`).join('')}
+      ${grupos.maestro ? '<p class="ase-nota" style="margin:0">Añade a los que no están en el Generador en la pestaña <b>_Maestro</b> de la Excel (nivel y km por viaje). Al corregirlo, pulsa ↻ Recalcular y desaparece de aquí.</p>' : ''}
+      ${revisados.length ? `<details style="margin-top:8px"><summary class="ase-nota" style="cursor:pointer">Ya revisados (${revisados.length})</summary><ul class="lav">${revisados.map(a => `<li><div><s>${esc(a.persona)}</s> <span>· ${esc(TIT[a.tipo] || a.tipo)}${a.revisadoPor ? ' · ' + esc(a.revisadoPor) : ''}</span></div><button class="okrev des" data-unrev="${esc(a.clave)}">Deshacer</button></li>`).join('')}</ul></details>` : ''}
     </details>` : ''}
     <details class="tarjeta recs" ${S._complAbierto || d.complementos.length ? 'open' : ''} id="complBox">
       <summary><span>➕ Complementos de administración</span><span class="${d.complementos.length?'pill-pend':'al-dia'}">${d.complementos.length ? d.complementos.length + ' este mes' : 'Ninguno'}</span></summary>
@@ -1399,21 +1428,25 @@ function pintarAsesoria() {
         <span class="imp">${nfA(c.cantidad)} ${c.tipo === 'Plus distancia (km)' ? 'km' : '€'}</span><button data-cedit="${esc(c.id)}" aria-label="Editar" title="Editar">✎</button><button data-cdel="${esc(c.id)}" aria-label="Borrar" title="Borrar">✕</button></div>`).join('')}</div>
     </details>
     <div class="tarjeta">
-      <div class="ase-filtros"><input id="aseBuscar" placeholder="Buscar por nombre o código…" value="${esc(S.aseFiltro)}">
-        <label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="aseSolo" ${S.aseSolo?'checked':''}> Solo con importes</label></div>
+      <div class="ase-filtros"><input id="aseBuscar" placeholder="Buscar por nombre o código…" value="${esc(S.aseFiltro)}"></div>
+      <div class="periodos" style="margin-bottom:8px">${[['importes','Con importes'],['revisar','Para revisar'],['pendientes','Sin confirmar'],['todos','Todos']].map(([k,t]) => `<button class="per ${F===k?'on':''}" data-av="${k}">${t}</button>`).join('')}</div>
+      <div class="leyenda" style="margin:0 0 8px"><span><b class="rojo">Nombre</b> para revisar</span><span><b style="color:var(--verde)">✓ Nombre</b> confirmado por su responsable</span></div>
       <div class="tscroll"><table class="tabla">
         <thead><tr><th>Persona</th><th>285 Sáb. €</th><th>265 Aus. €</th><th>219 Comp. €</th><th>214 Km</th><th>606 Peaj. €</th></tr></thead>
-        <tbody>${visibles.map(r => filaAse(r, false)).join('')}${d.extras.map(r => filaAse(r, true)).join('')}</tbody>
+        <tbody>${visibles.map(([r, e]) => filaAse(r, false, e)).join('')}${F === 'importes' || F === 'todos' || F === 'revisar' ? d.extras.map(r => filaAse(r, true, 'rev')).join('') : ''}</tbody>
         <tfoot><tr><td>Total</td><td>${nfA(T[1])}</td><td>${nfA(T[2])}</td><td>${nfA(T[3])}</td><td>${nfA(T[4],0)}</td><td>${nfA(T[5])}</td></tr></tfoot>
       </table></div>
-      ${!visibles.length ? '<p class="ayuda">No hay importes en este mes todavía.</p>' : ''}
+      ${!visibles.length ? '<p class="ayuda">No hay nadie en este filtro.</p>' : ''}
     </div>
     <p class="meta">Calculado con los datos de la Excel a las ${new Date(d._fresco).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</p>`;
   ligarAse();
 }
-function filaAse(r, extra) {
+function filaAse(r, extra, e) {
   const v = r.slice(2);
-  return `<tr class="${extra?'extra':''}"><td>${esc(r[1])}<br><span class="cod">${esc(r[0] || 'sin código')}${extra ? ' · fuera de la lista' : ''}</span></td>${[1,2,3,4,5].map(i => `<td class="${Math.abs(v[i])<0.005?'cero':''}">${nfA(v[i], i===4?2:2) || '–'}</td>`).join('')}</tr>`;
+  const cls = e === 'rev' ? 'rojo' : e === 'ok' ? 'verde' : '';
+  const marca = e === 'ok' ? '✓ ' : e === 'rev' ? '⚠ ' : '';
+  const sub = extra ? ' · fuera de la lista' : e === 'pend' ? ' · sin confirmar' : e === 'coord' ? ' · coordinador' : '';
+  return `<tr class="${extra?'extra':''}"><td><b class="${cls}">${marca}${esc(r[1])}</b><br><span class="cod">${esc(r[0] || 'sin código')}${sub}</span></td>${[1,2,3,4,5].map(i => `<td class="${Math.abs(v[i])<0.005?'cero':''}">${nfA(v[i]) || '–'}</td>`).join('')}</tr>`;
 }
 function ligarAse() {
   const main = $('#main');
@@ -1428,7 +1461,17 @@ function ligarAse() {
   };
   $('#aseLista').onclick = () => modalLista();
   const bus = $('#aseBuscar'); bus.oninput = () => { S.aseFiltro = bus.value; const pos = bus.selectionStart; pintarAsesoria(); const nb = $('#aseBuscar'); nb.focus(); nb.setSelectionRange(pos, pos); };
-  $('#aseSolo').onchange = e => { S.aseSolo = e.target.checked; pintarAsesoria(); };
+  main.querySelectorAll('[data-av]').forEach(b => b.onclick = () => { S.aseVista = b.dataset.av; pintarAsesoria(); });
+  $('#aseRecalc').onclick = async () => { toast('Recalculando…'); try { const r = await api('asesoria', { mes:d.mes, fresco:true }); r._fresco = Date.now(); S.aseDatos[d.mes] = r; pintarAsesoria(); toast('Actualizado ✓'); } catch (e) { toast(e.message, true); } };
+  main.querySelectorAll('[data-rev]').forEach(b => b.onclick = async () => {
+    const a = d.avisos.find(x => x.clave === b.dataset.rev); if (a) a.revisado = true; pintarAsesoria();
+    try { await api('revisado', { mes:d.mes, clave:b.dataset.rev, persona:b.dataset.per, texto:b.dataset.txt }); }
+    catch (e) { if (a) a.revisado = false; pintarAsesoria(); toast(/Acci[oó]n desconocida/.test(e.message) ? 'Actualiza el código de Apps Script para marcar revisados' : e.message, true); }
+  });
+  main.querySelectorAll('[data-unrev]').forEach(b => b.onclick = async () => {
+    const a = d.avisos.find(x => x.clave === b.dataset.unrev); if (a) a.revisado = false; pintarAsesoria();
+    try { await api('revisado', { mes:d.mes, clave:b.dataset.unrev, quitar:true }); } catch (e) { toast(e.message, true); }
+  });
   const cb = $('#complBox'); cb.ontoggle = () => { S._complAbierto = cb.open; };
   $('#cAdd').onclick = async () => {
     const txt = $('#cPersona').value.trim(), cod = (txt.match(/^(\d+)/) || [])[1], cant = aNum($('#cCant').value);

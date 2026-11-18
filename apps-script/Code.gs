@@ -554,11 +554,40 @@ function calcularAsesoria_(mes) {
     var kp = nN_(r[1] + ' ' + r[2] + ' ' + r[3]); if (!kP[kp]) kP[kp] = m;
   });
   var porCod = {}, avisos = [], personas = {};
+  var ordenFilas = filas_(hoja_('_OrdenAsesoria', H_ORDEN)).filter(function (r) { return r[0] !== '' && r[0] != null; });
+  var porApNom = {};
+  ordenFilas.forEach(function (r) {
+    var partes = String(r[1] || '').split(','), ap = nN_(partes[0]).split(' ')[0], nom = nN_(partes.slice(1).join(' ')).split(' ')[0];
+    var k = ap + '|' + nom; porApNom[k] = porApNom[k] ? 'DUPLICADO' : { codigo: String(r[0]).trim(), ases: String(r[1]).trim() };
+  });
+  function deLista(ap1, nombre) {
+    var o = porApNom[nN_(ap1).split(' ')[0] + '|' + nN_(nombre).split(' ')[0]];
+    return o && o !== 'DUPLICADO' ? { codigo: o.codigo, ases: o.ases, estado: 'OK', auto: true } : null;
+  }
+  // estado de confirmación (✓ de los responsables) por persona
+  var conf = {};
+  try {
+    var dm = datosMesTodos_(mes, aj);
+    Object.keys(dm.grupos).forEach(function (g) { dm.grupos[g].forEach(function (m) {
+      var k = nN_(m.nombre + ' ' + m.ap1 + ' ' + m.ap2), o = conf[k] || (conf[k] = { total: 0, ok: 0 });
+      o.total++; if (m.estado === 'guardado') o.ok++;
+    }); });
+  } catch (e) { }
+  var estados = {};
+  function marcaEstado(clave, persona) {
+    var o = conf[nN_(persona)]; if (!o) return;
+    var e = estados[clave] || (estados[clave] = { total: 0, ok: 0 }); e.total += o.total; e.ok += o.ok; conf[nN_(persona)] = { total: 0, ok: 0 };
+  }
   function acumula(clave, nombre, v) {
     var t = porCod[clave] || (porCod[clave] = { nombre: nombre, v: [0, 0, 0, 0, 0, 0] });
     for (var i = 0; i < 6; i++) t.v[i] += v[i];
   }
-  function aviso(tipo, texto, quien, grupo) { avisos.push({ tipo: tipo, texto: texto, persona: quien || '', grupo: grupo || '' }); }
+  var revisados = {};
+  filas_(hoja_('_RevisadosAsesoria', ['Mes', 'Clave', 'Persona', 'Aviso', 'Por', 'Fecha'])).forEach(function (r) { if (norm_(r[0]) === norm_(mes)) revisados[String(r[1])] = { por: String(r[4] || ''), fecha: r[5] instanceof Date ? r[5].toISOString() : '' }; });
+  function aviso(tipo, texto, quien, grupo, codigo) {
+    var clave = tipo + '|' + nN_(quien || '');
+    avisos.push({ tipo: tipo, texto: texto, persona: quien || '', grupo: grupo || '', codigo: codigo || '', clave: clave, revisado: !!revisados[clave], revisadoPor: revisados[clave] ? revisados[clave].por : '' });
+  }
 
   filas_(sh).forEach(function (r) {
     if (!r[c.grupo] || !r[c.nombre]) return;
@@ -571,17 +600,19 @@ function calcularAsesoria_(mes) {
     var esp = numTexto_(r[c.km]), pea = numTexto_(r[c.peajes]);
     var hayAlgo = viajes.some(Boolean) || sab || aus || sus || esp.n || pea.n;
     var cod = codigoDe_(idx, n, a1, a2);
-    if (cod && cod.estado === 'Baja' && hayAlgo) aviso('baja', 'Marcado como baja pero tiene datos este mes. Si corresponde pagarlo y no está en la lista de la asesoría, añádelo a mano', quien, g);
-    if (!m) aviso('maestro', 'No está en el Generador: sin nivel ni km por viaje', quien, g);
-    if (conX) aviso('x', 'Días con «x» sin rellenar (cuentan como 0 viajes)', quien, g);
-    if (esp.texto) aviso('texto', 'Km especiales escritos como texto, leído ' + esp.n, quien, g);
-    if (pea.texto) aviso('texto', 'Peajes escritos como texto, leído ' + pea.n, quien, g);
+    if (!cod || !cod.codigo) cod = deLista(a1, n) || cod;
+    if (cod && cod.estado === 'Baja' && hayAlgo) aviso('baja', 'Marcado como baja pero tiene datos este mes. Si corresponde pagarlo y no está en la lista de la asesoría, añádelo a mano', quien, g, cod.codigo);
+    var cc = cod && cod.codigo ? cod.codigo : '';
+    if (!m) aviso('maestro', 'No está en el Generador: sin nivel ni km por viaje', quien, g, cc);
+    if (conX) aviso('x', 'Días con «x» sin rellenar (cuentan como 0 viajes)', quien, g, cc);
+    if (esp.texto) aviso('texto', 'Km especiales escritos como texto, leído ' + esp.n, quien, g, cc);
+    if (pea.texto) aviso('texto', 'Peajes escritos como texto, leído ' + pea.n, quien, g, cc);
     var nivel = m ? m.nivel : 0, km = m ? m.km : [0, 0, 0, 0, 0];
-    if ((sab || aus || sus) && !(m && m.nivelOk)) aviso('nivel', 'Tiene sábados/ausencias/sustituciones pero no tiene nivel (€/sesión)', quien, g);
+    if ((sab || aus || sus) && !(m && m.nivelOk)) aviso('nivel', 'Tiene sábados/ausencias/sustituciones pero no tiene nivel (€/sesión)', quien, g, cc);
     var kmViajes = 0; for (var i = 0; i < 5; i++) kmViajes += km[i] * viajes[i];
     var v = [0, sab * nivel, -(aus * nivel), sus * nivel, kmViajes + esp.n, pea.n];
-    if (!cod || !cod.codigo) { if (hayAlgo) aviso('codigo', 'Sin código de la asesoría', quien, g); acumula('SIN|' + nN_(quien), (a1 + ' ' + a2 + ', ' + n).toUpperCase(), v); }
-    else acumula(cod.codigo, cod.ases, v);
+    if (!cod || !cod.codigo) { if (hayAlgo) aviso('codigo', 'Sin código de la asesoría', quien, g); acumula('SIN|' + nN_(quien), (a1 + ' ' + a2 + ', ' + n).toUpperCase(), v); marcaEstado('SIN|' + nN_(quien), quien); }
+    else { acumula(cod.codigo, cod.ases, v); marcaEstado(cod.codigo, quien); }
     personas[cod && cod.codigo ? cod.codigo : quien] = 1;
   });
 
@@ -594,9 +625,11 @@ function calcularAsesoria_(mes) {
       if (norm_(r[0]) === M && nN_(r[1]) === nN_(cr[0])) { hay = true; km += numTexto_(r[2]).n; par += numTexto_(r[3]).n; sust += numTexto_(r[4]).n; pea += numTexto_(r[6]).n; }
     });
     var t = numTexto_(cr[3]).n, cod = String(cr[2] || '').trim();
+    if (!cod) { var nn = nN_(cr[0]).split(' '), dl = deLista(nn.slice(1).join(' '), nn[0]); if (dl) { cod = dl.codigo; cr = [cr[0], dl.ases, cod, cr[3]]; } }
     var v = [0, par * t, -(Math.max(-sust, 0) * t), Math.max(sust, 0) * t, km, pea];
     if (!cod) { if (hay && (km || par || sust || pea)) aviso('codigo', 'Coordinador sin código de la asesoría', String(cr[0]), 'Coordinadores'); acumula('SIN|' + nN_(cr[0]), String(cr[1] || cr[0]).toUpperCase(), v); }
     else acumula(cod, String(cr[1] || cr[0]), v);
+    if (hay) { var ec = estados[cod || ('SIN|' + nN_(cr[0]))] || (estados[cod || ('SIN|' + nN_(cr[0]))] = { total: 0, ok: 0, coord: true }); ec.coord = true; }
   });
 
   // complementos y plus distancia puestos a mano por administración
@@ -612,7 +645,7 @@ function calcularAsesoria_(mes) {
   });
 
   // ordenar como la lista de la asesoría
-  var orden = filas_(hoja_('_OrdenAsesoria', H_ORDEN)).filter(function (r) { return r[0] !== '' && r[0] != null; }), enOrden = {};
+  var orden = ordenFilas, enOrden = {};
   var filas = orden.map(function (r) {
     var cod = String(r[0]).trim(); enOrden[cod] = 1;
     var t = porCod[cod];
@@ -625,12 +658,12 @@ function calcularAsesoria_(mes) {
     if (!t.v.some(function (x) { return Math.abs(x) > 0.004; })) return;
     extras.push([k.indexOf('SIN|') === 0 ? '' : k, t.nombre].concat(t.v.map(redondea_)));
     var esBaja = idx.ases[nN_(t.nombre)] && idx.ases[nN_(t.nombre)].estado === 'Baja';
-    if (k.indexOf('SIN|') !== 0 && !esBaja) aviso('lista', 'Tiene importes pero no está en la lista de la asesoría (código ' + k + ')', t.nombre, '');
+    if (k.indexOf('SIN|') !== 0 && !esBaja) aviso('lista', 'Tiene importes pero no está en la lista de la asesoría (código ' + k + ')', t.nombre, '', k);
   });
   var tot = [0, 0, 0, 0, 0, 0];
   filas.concat(extras).forEach(function (f) { for (var i = 0; i < 6; i++) tot[i] += f[2 + i]; });
   return { mes: mes, ordenMes: String(aj.ORDEN_ASESORIA_MES || ''), filas: filas, extras: extras, avisos: avisos,
-    totales: tot.map(redondea_), personas: Object.keys(personas).length, complementos: complementos };
+    totales: tot.map(redondea_), personas: Object.keys(personas).length, complementos: complementos, estados: estados };
 }
 
 // ---------------------------------------------------------------- bloqueo (reentrante dentro de una misma llamada)
@@ -732,8 +765,21 @@ var ACCIONES = {
   asesoria: function (p) {
     var u = usuario_(p.codigo);
     if (!u.admin) throw new Error('Solo para administración.');
+    if (p.fresco) limpiarCache_();
     comprobarMes_(p.mes, ajustes_(), false);
     return calcularAsesoria_(p.mes);
+  },
+
+  /** Marcar / desmarcar un aviso como revisado (solo administración). */
+  revisado: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    return conBloqueo_(function () {
+      var sh = hoja_('_RevisadosAsesoria', ['Mes', 'Clave', 'Persona', 'Aviso', 'Por', 'Fecha']), f = filas_(sh);
+      for (var i = f.length - 1; i >= 0; i--) if (norm_(f[i][0]) === norm_(p.mes) && String(f[i][1]) === String(p.clave)) sh.deleteRow(i + 2);
+      if (!p.quitar) sh.appendRow([p.mes, p.clave, p.persona || '', p.texto || '', u.persona, new Date()]);
+      return { ok: true };
+    });
   },
 
   /** Guardar la lista (código + nombre) de la asesoría, en su orden. */
