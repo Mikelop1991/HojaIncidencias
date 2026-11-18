@@ -369,6 +369,7 @@ body.modo-pdf .tscroll{overflow:visible}
 .compl b{display:block;font-size:14px}.compl span{color:var(--gris)}
 .compl .imp{margin-left:auto;font-weight:800;white-space:nowrap}
 .compl button{color:var(--gris);font-size:18px;padding:0 4px}
+.compl.editando{outline:2px solid var(--c-sus)}
 .ase-filtros{display:flex;gap:8px;align-items:center;margin:0 0 8px;flex-wrap:wrap}
 .ase-filtros input{flex:1;min-width:160px;padding:10px 12px;border:1.5px solid var(--linea);border-radius:10px;background:var(--card);color:var(--tinta)}
 .tabla tr.extra td{background:var(--rec-bg)}
@@ -1391,10 +1392,11 @@ function pintarAsesoria() {
         <div class="fila2"><select id="cTipo"><option>Complemento (€)</option><option>Plus distancia (km)</option></select>
         <input id="cCant" inputmode="decimal" placeholder="Cantidad"></div>
         <input id="cMotivo" placeholder="Motivo (ej. formación 12/11)">
-        <button class="btn" id="cAdd" style="padding:11px 16px">Añadir</button>
+        <button class="btn" id="cAdd" style="padding:11px 16px">${S.cEdit ? 'Guardar cambios' : 'Añadir'}</button>
+        ${S.cEdit ? '<button class="btn sec" id="cCancel" style="padding:11px 16px">Cancelar</button>' : ''}
       </div>
-      <div class="compl-lista">${d.complementos.map(c => `<div class="compl"><div><b>${esc(c.nombre)}</b><span>${esc(c.motivo || 'Sin motivo')} · ${c.fecha ? new Date(c.fecha).toLocaleDateString('es-ES') : ''}${c.por ? ' · ' + esc(c.por) : ''}</span></div>
-        <span class="imp">${nfA(c.cantidad)} ${c.tipo === 'Plus distancia (km)' ? 'km' : '€'}</span><button data-cdel="${esc(c.id)}" aria-label="Borrar">✕</button></div>`).join('')}</div>
+      <div class="compl-lista">${d.complementos.map(c => `<div class="compl ${S.cEdit===c.id?'editando':''}"><div><b>${esc(c.nombre)}</b><span>${esc(c.motivo || 'Sin motivo')} · ${c.fecha ? new Date(c.fecha).toLocaleDateString('es-ES') : ''}${c.por ? ' · ' + esc(c.por) : ''}</span></div>
+        <span class="imp">${nfA(c.cantidad)} ${c.tipo === 'Plus distancia (km)' ? 'km' : '€'}</span><button data-cedit="${esc(c.id)}" aria-label="Editar" title="Editar">✎</button><button data-cdel="${esc(c.id)}" aria-label="Borrar" title="Borrar">✕</button></div>`).join('')}</div>
     </details>
     <div class="tarjeta">
       <div class="ase-filtros"><input id="aseBuscar" placeholder="Buscar por nombre o código…" value="${esc(S.aseFiltro)}">
@@ -1434,9 +1436,21 @@ function ligarAse() {
     if (!cant) return toast('Pon la cantidad', true);
     const nombre = txt.replace(/^\d+\s*·\s*/, '');
     const b = $('#cAdd'); b.disabled = true;
-    try { await api('complemento', { mes:d.mes, codigoAsesoria:cod, nombre, tipo:$('#cTipo').value, cantidad:cant, motivo:$('#cMotivo').value.trim() }); S._complAbierto = true; toast('Complemento añadido ✓'); await refrescarAsesoria(true); }
+    try {
+      const r = await api('complemento', { mes:d.mes, codigoAsesoria:cod, nombre, tipo:$('#cTipo').value, cantidad:cant, motivo:$('#cMotivo').value.trim(), editar:S.cEdit || undefined });
+      // servidor antiguo (sin edición): ha creado uno nuevo, así que se borra el anterior
+      if (S.cEdit && r && r.id && r.id !== S.cEdit) await api('complemento', { borrar: S.cEdit });
+      S._complAbierto = true; toast(S.cEdit ? 'Complemento actualizado ✓' : 'Complemento añadido ✓'); S.cEdit = null; await refrescarAsesoria(true);
+    }
     catch (e) { toast(e.message, true); } finally { b.disabled = false; }
   };
+  main.querySelectorAll('[data-cedit]').forEach(b => b.onclick = () => {
+    const c = d.complementos.find(x => x.id === b.dataset.cedit); if (!c) return;
+    S.cEdit = c.id; S._complAbierto = true; pintarAsesoria();
+    $('#cPersona').value = `${c.codigo} · ${c.nombre}`; $('#cTipo').value = c.tipo; $('#cCant').value = String(c.cantidad).replace('.', ',');
+    $('#cMotivo').value = c.motivo; $('#cCant').focus(); $('#complBox').scrollIntoView({ block:'nearest' });
+  });
+  const cc = $('#cCancel'); if (cc) cc.onclick = () => { S.cEdit = null; pintarAsesoria(); };
   main.querySelectorAll('[data-cdel]').forEach(b => b.onclick = async () => {
     if (!confirm('¿Borrar este complemento?')) return;
     try { await api('complemento', { borrar: b.dataset.cdel }); toast('Borrado'); await refrescarAsesoria(true); } catch (e) { toast(e.message, true); }

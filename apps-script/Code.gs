@@ -769,6 +769,16 @@ var ACCIONES = {
       if (MESES.indexOf(p.mes) < 0) throw new Error('Mes no válido.');
       var cant = numTexto_(p.cantidad).n;
       if (!p.codigoAsesoria || !cant) throw new Error('Falta la persona o la cantidad.');
+      if (p.editar) {
+        var fe = filas_(sh);
+        for (var j = 0; j < fe.length; j++) if (String(fe[j][8]) === String(p.editar)) {
+          sh.getRange(j + 2, 2, 1, 5).setValues([[String(p.codigoAsesoria), p.nombre || '', p.tipo === TIPO_PLUS ? TIPO_PLUS : TIPO_COMPLEMENTO, cant, p.motivo || '']]);
+          sh.getRange(j + 2, 7, 1, 2).setValues([[new Date(), u.persona]]);
+          log_(u.persona, 'Editar complemento', p.mes + ' · ' + p.nombre + ' · ' + fe[j][4] + ' → ' + cant);
+          return { id: p.editar };
+        }
+        throw new Error('No encontrado (puede que lo hayan borrado).');
+      }
       var id = Utilities.getUuid ? Utilities.getUuid() : String(Date.now());
       sh.appendRow([p.mes, String(p.codigoAsesoria), p.nombre || '', p.tipo === TIPO_PLUS ? TIPO_PLUS : TIPO_COMPLEMENTO, cant, p.motivo || '', new Date(), u.persona, id]);
       log_(u.persona, 'Complemento', p.mes + ' · ' + p.nombre + ' · ' + cant);
