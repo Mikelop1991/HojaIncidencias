@@ -127,7 +127,7 @@ main{padding:14px 14px calc(90px + env(safe-area-inset-bottom));max-width:680px;
 .fcab{position:sticky;top:0;z-index:2;background:var(--card);padding:calc(10px + env(safe-area-inset-top)) 12px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--linea)}
 .fcab .icono{background:var(--fondo);color:var(--tinta)}
 .fcab .t{flex:1;min-width:0}
-.fav{width:40px;height:40px;border-radius:50%;object-fit:cover;flex:none;display:block}
+.fav{width:48px;height:48px;border-radius:50%;object-fit:cover;flex:none;display:block}
 .fcab .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fcab .t span{font-size:13px;color:var(--gris)}
 .fcuerpo{padding:14px 14px 10px;max-width:680px;margin:0 auto}
@@ -233,6 +233,27 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 }
 @media (min-width:900px) and (max-width:1150px){ .fcuerpo{grid-template-columns:1fr} .fcuerpo .tarjeta:first-child{grid-row:auto} }
 
+
+/* ---------- retoques visuales */
+.anillo-guardado,.anillo-enviando{box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--verde)}
+.anillo-enhoja{box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--ambar)}
+.anillo-error{box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--c-aus)}
+.av.anillo-guardado:not(.foto),.av.anillo-enviando:not(.foto){background:var(--verde-suave);color:var(--verde)}
+.gcount{font-size:11px;font-weight:800;padding:2px 6px;border-radius:999px;background:var(--fondo);color:var(--gris);margin-left:4px}
+.gcount.lleno{background:var(--verde-suave);color:var(--verde)}
+.completo{margin-top:10px;font-size:13px;font-weight:700;color:var(--verde);background:var(--verde-suave);border-radius:10px;padding:8px 10px;animation:aparece .4s ease}
+@keyframes aparece{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.esq{border-radius:14px;margin-bottom:8px;background:linear-gradient(90deg,var(--card) 0%,var(--linea) 50%,var(--card) 100%);background-size:200% 100%;animation:brillo 1.2s linear infinite}
+.esq-res{height:74px;margin-bottom:12px}.esq-mon{height:66px}
+@keyframes brillo{from{background-position:200% 0}to{background-position:-200% 0}}
+.mon{transition:transform .12s ease,box-shadow .12s ease}
+.mon:active{transform:scale(.985)}
+.hist-btn{margin-top:12px;font-size:13px;font-weight:700;color:var(--texto-azul);text-decoration:underline}
+.hist{list-style:none;padding:0;margin:10px 0 0;font-size:13px}
+.hist li{padding:8px 0;border-top:1px solid var(--linea)}
+.hist span{color:var(--gris);font-size:12px}
+i.dif{font-style:normal;font-size:9px;margin-left:3px;vertical-align:1px}
+i.dif{color:var(--texto-azul);opacity:.75}
 /* ---------- bloqueo de meses (administración) */
 .bloqueo{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:12px 14px;margin-bottom:10px;box-shadow:var(--sombra);border-left:4px solid var(--verde);font-size:14px}
 .bloqueo.on{border-left-color:var(--rojo)}
@@ -541,8 +562,8 @@ fetch('fotos/monitores/index.json', { cache:'no-cache' }).then(r => r.ok ? r.jso
   if (antes !== l.join() && S.user && S.tab === 'monitores' && !S.ficha) pintar();
 }).catch(() => {});
 function avatarMon(m, cls) {
-  const sl = slugMon(m);
-  return S.fotosMon.has(sl) ? `<img class="${cls||'av'} foto" src="fotos/monitores/${sl}.jpg" alt="" loading="lazy">` : `<div class="${cls||'av'}">${esc(iniciales(m))}</div>`;
+  const sl = slugMon(m), anillo = cls ? '' : ' anillo-' + (m.estado || 'pendiente');
+  return S.fotosMon.has(sl) ? `<img class="${cls||'av'} foto${anillo}" src="fotos/monitores/${sl}.jpg" alt="" loading="lazy">` : `<div class="${cls||'av'}${anillo}">${esc(iniciales(m))}</div>`;
 }
 function imgMini(nombre){ return `<img class="mini" src="${fotoDe(nombre)}" alt="" onerror="this.remove()">`; }
 
@@ -665,7 +686,7 @@ function pintar() {
   if (S.tab === 'mis') return pintarMisDatosDesdeCache();
   const d = S.datos[S.mes];
   if (d) { S.datosMes = vista(d); pintarLista(); }
-  else $('#main').innerHTML = '<div class="cargando"><div class="spin"></div></div>';
+  else $('#main').innerHTML = '<div class="esq esq-res"></div>' + '<div class="esq esq-mon"></div>'.repeat(7);
 }
 /** ¿No se puede editar? (administración siempre puede) */
 const bloq = d => !!(d && d.cerrado && !(S.user && S.user.admin));
@@ -694,7 +715,8 @@ function iniciales(m){ return ((m.nombre[0]||'') + (m.ap1[0]||'')).toUpperCase()
 function pintarLista() {
   const d = S.datosMes, main = $('#main');
   const grupos = S.user.grupos.length > 1
-    ? `<div class="grupos">${S.user.grupos.map(g => `<button class="grupo ${g===S.grupo?'on':''}" data-g="${esc(g)}">${imgMini(g)}${esc(titulo(g))}</button>`).join('')}</div>` : '';
+    ? `<div class="grupos">${S.user.grupos.map(g => { const l = (S.datos[S.mes] && S.datos[S.mes].grupos[g]) || [], h = l.filter(m => m.estado === 'guardado' || m.estado === 'enviando').length;
+        return `<button class="grupo ${g===S.grupo?'on':''}" data-g="${esc(g)}">${imgMini(g)}${esc(titulo(g))}${l.length ? ` <span class="gcount ${h===l.length?'lleno':''}">${h}/${l.length}</span>` : ''}</button>`; }).join('')}</div>` : '';
   const total = d.monitores.length, hechos = d.monitores.filter(m => m.estado === 'guardado' || m.estado === 'enviando').length;
   const f = S.filtro.toLowerCase();
   const lista = d.monitores.filter(m => !f || `${m.nombre} ${m.ap1} ${m.ap2}`.toLowerCase().includes(f));
@@ -710,6 +732,7 @@ function pintarLista() {
     <div class="resumen">
       <div class="fila"><span>${esc(d.mes)} ${d.anio}${S.user.grupos.length>1?' · '+esc(titulo(d.grupo)):''}</span><span><b>${hechos}</b> / ${total} revisados</span></div>
       <div class="barra"><i style="width:${total?hechos/total*100:0}%"></i></div>
+      ${total && hechos === total ? '<div class="completo">🎉 ¡Grupo completo! Todos los monitores revisados este mes.</div>' : ''}
     </div>
     ${total > 8 ? `<input class="buscar" id="buscar" placeholder="Buscar monitor…" value="${esc(S.filtro)}">` : ''}
     </div>
@@ -910,6 +933,7 @@ function pintarFicha() {
       <p class="ayuda">Motivo de la ausencia, a quién sustituye y qué día, etc.</p>
       <div class="chips">${['Sustituye a ','Falta el ','Formación ','Comparte coche'].map(c=>`<button class="chip" data-chip="${c}">${c.trim()}…</button>`).join('')}</div>
       <textarea id="obs" placeholder="Ej.: Sustituye a Víctor en Griseras el 3/11" ${bloq(dm)?'disabled':''}>${esc(F.v.obs)}</textarea>
+      <button class="hist-btn" id="verHist">🕑 Ver historial de cambios</button><div id="hist"></div>
       ${m.actualizado ? `<div class="meta">Última vez guardado ${new Date(m.actualizado).toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${m.por?' por '+esc(m.por):''}</div>`:''}
     </div>`;
 
@@ -930,6 +954,14 @@ function pintarFicha() {
     obs.value = (obs.value.trim() ? obs.value.trim() + '. ' : '') + c.dataset.chip; F.v.obs = obs.value; F.sucio = true;
     obs.focus(); obs.setSelectionRange(obs.value.length, obs.value.length);
   });
+  const vh = $('#verHist'); if (vh) vh.onclick = async () => {
+    vh.disabled = true; vh.textContent = 'Cargando…';
+    try {
+      const r = await api('historial', { grupo:S.datosMes.grupo, nombre:`${m.nombre} ${m.ap1} ${m.ap2}` });
+      $('#hist').innerHTML = r.cambios.length ? `<ul class="hist">${r.cambios.map(c => `<li><b>${new Date(c.fecha).toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</b> · ${esc(c.por)}<br><span>${esc(c.mes)}${c.detalle ? ' · ' + esc(c.detalle) : ''}</span></li>`).join('')}</ul>` : '<p class="ayuda">Todavía no hay cambios registrados desde la app.</p>';
+      vh.remove();
+    } catch (e) { vh.disabled = false; vh.textContent = '🕑 Ver historial de cambios'; toast(/Acci[oó]n desconocida/.test(e.message) ? 'Actualiza el código de Apps Script para ver el historial' : e.message, true); }
+  };
   const ua = $('#usarAus'); if (ua) ua.onclick = () => { F.v.ausencias = sinMarcar; F.sucio = true; const y=$('#ficha').scrollTop; pintarFicha(); $('#ficha').scrollTop=y; };
 }
 
@@ -1374,7 +1406,7 @@ function pintarAsesoria() {
   const T = d.totales, con = d.filas.filter(f => f.slice(2).some(x => Math.abs(x) > 0.004));
   const pendientes = d.avisos.filter(a => !a.revisado), revisados = d.avisos.filter(a => a.revisado);
   const grupos = {}; pendientes.forEach(a => (grupos[a.tipo] = grupos[a.tipo] || []).push(a));
-  const TIT = { maestro:'No están en el Generador (sin nivel ni km)', codigo:'Sin código de la asesoría', lista:'Con importes pero fuera de la lista de la asesoría', baja:'Marcados como baja con datos', nivel:'Sin nivel (€/sesión)', x:'Días con «x» sin rellenar', texto:'Texto en km o peajes' };
+  const TIT = { maestro:'No están en el Generador (sin nivel ni km)', codigo:'Sin código de la asesoría', lista:'Con importes pero fuera de la lista de la asesoría', baja:'Marcados como baja con datos', nivel:'Sin nivel (€/sesión)', x:'Días con «x» sin rellenar', texto:'Texto en km o peajes', raro:'Datos que parecen raros', cambio:'Mucho cambio respecto al mes anterior' };
   // estado de confirmación de los responsables
   const est = d.filas.map(r => estadoPersona(d, r[0]));
   const nOk = est.filter(e => e === 'ok').length, nPend = est.filter(e => e === 'pend').length;
@@ -1430,7 +1462,7 @@ function pintarAsesoria() {
     <div class="tarjeta">
       <div class="ase-filtros"><input id="aseBuscar" placeholder="Buscar por nombre o código…" value="${esc(S.aseFiltro)}"></div>
       <div class="periodos" style="margin-bottom:8px">${[['importes','Con importes'],['revisar','Para revisar'],['pendientes','Sin confirmar'],['todos','Todos']].map(([k,t]) => `<button class="per ${F===k?'on':''}" data-av="${k}">${t}</button>`).join('')}</div>
-      <div class="leyenda" style="margin:0 0 8px"><span><b class="rojo">Nombre</b> para revisar</span><span><b style="color:var(--verde)">✓ Nombre</b> confirmado por su responsable</span></div>
+      <div class="leyenda" style="margin:0 0 8px"><span><b class="rojo">Nombre</b> para revisar</span><span><b style="color:var(--verde)">✓ Nombre</b> confirmado por su responsable</span>${d.anterior ? `<span><i class="dif sube">▲</i><i class="dif baja">▼</i> respecto a ${esc(d.anterior.mes)}</span>` : ''}</div>
       <div class="tscroll"><table class="tabla">
         <thead><tr><th>Persona</th><th>285 Sáb. €</th><th>265 Aus. €</th><th>219 Comp. €</th><th>214 Km</th><th>606 Peaj. €</th></tr></thead>
         <tbody>${visibles.map(([r, e]) => filaAse(r, false, e)).join('')}${F === 'importes' || F === 'todos' || F === 'revisar' ? d.extras.map(r => filaAse(r, true, 'rev')).join('') : ''}</tbody>
@@ -1442,11 +1474,13 @@ function pintarAsesoria() {
   ligarAse();
 }
 function filaAse(r, extra, e) {
-  const v = r.slice(2);
+  const v = r.slice(2), d = S.aseDatos[aseMesPorDefecto()], ant = d && d.anterior ? (d.anterior.v[r[0]] || [0,0,0,0,0,0]) : null;
+  const flecha = i => { if (!ant) return ''; const dif = v[i] - ant[i]; if (Math.abs(dif) < 0.005) return ''; const sube = dif > 0;
+    return `<i class="dif ${sube ? 'sube' : 'baja'}" title="${d.anterior.mes}: ${nfA(ant[i]) || '0'}">${sube ? '▲' : '▼'}</i>`; };
   const cls = e === 'rev' ? 'rojo' : e === 'ok' ? 'verde' : '';
   const marca = e === 'ok' ? '✓ ' : e === 'rev' ? '⚠ ' : '';
   const sub = extra ? ' · fuera de la lista' : e === 'pend' ? ' · sin confirmar' : e === 'coord' ? ' · coordinador' : '';
-  return `<tr class="${extra?'extra':''}"><td><b class="${cls}">${marca}${esc(r[1])}</b><br><span class="cod">${esc(r[0] || 'sin código')}${sub}</span></td>${[1,2,3,4,5].map(i => `<td class="${Math.abs(v[i])<0.005?'cero':''}">${nfA(v[i]) || '–'}</td>`).join('')}</tr>`;
+  return `<tr class="${extra?'extra':''}"><td><b class="${cls}">${marca}${esc(r[1])}</b><br><span class="cod">${esc(r[0] || 'sin código')}${sub}</span></td>${[1,2,3,4,5].map(i => `<td class="${Math.abs(v[i])<0.005?'cero':''}" title="${ant ? d.anterior.mes + ': ' + (nfA(ant[i]) || '0') : ''}">${nfA(v[i]) || '–'}${flecha(i)}</td>`).join('')}</tr>`;
 }
 function ligarAse() {
   const main = $('#main');

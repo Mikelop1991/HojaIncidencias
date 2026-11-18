@@ -24,7 +24,7 @@
  *   Excel, por ejemplo:
  *   'https://docs.google.com/spreadsheets/d/XXXXXXXX/edit'
  * ================================================================ */
-var URL_HOJA_REGISTRO = '';
+var URL_HOJA_REGISTRO = '';   // basta pegarla UNA vez: queda guardada aunque luego actualices el código
 
 var MESES = ['Octubre', 'Noviembre', 'Diciembre', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'];
 var MES_NUM = { Octubre: 10, Noviembre: 11, Diciembre: 12, Enero: 1, Febrero: 2, Marzo: 3, Abril: 4, Mayo: 5, Junio: 6 };
@@ -46,8 +46,17 @@ var CABECERA_MES = ['Responsable', 'Nombre', 'Primer Apellido', 'Segundo Apellid
 
 var _registro = null;
 /** Hoja compartida del registro (meses + Responsables). */
+function urlRegistro_() {
+  var props = null;
+  try { props = PropertiesService.getScriptProperties(); } catch (e) { }
+  if (URL_HOJA_REGISTRO) {                       // si se pega, se guarda para siempre
+    try { if (props && props.getProperty('URL_HOJA_REGISTRO') !== URL_HOJA_REGISTRO) props.setProperty('URL_HOJA_REGISTRO', URL_HOJA_REGISTRO); } catch (e) { }
+    return URL_HOJA_REGISTRO;
+  }
+  try { return props ? props.getProperty('URL_HOJA_REGISTRO') || '' : ''; } catch (e) { return ''; }
+}
 function ss_() {
-  if (!_registro) _registro = URL_HOJA_REGISTRO ? SpreadsheetApp.openByUrl(URL_HOJA_REGISTRO) : SpreadsheetApp.getActiveSpreadsheet();
+  if (!_registro) { var url = urlRegistro_(); _registro = url ? SpreadsheetApp.openByUrl(url) : SpreadsheetApp.getActiveSpreadsheet(); }
   if (!_registro) throw new Error('Este proyecto de Apps Script no está dentro de la Excel. Ábrelo desde la Excel (Extensiones → Apps Script) o pega la dirección de la Excel en URL_HOJA_REGISTRO, arriba del todo.');
   return _registro;
 }
@@ -542,8 +551,12 @@ function bajas_() {
   return b;
 }
 
-function calcularAsesoria_(mes) {
+function calcularAsesoria_(mes, sinAnterior) {
   var aj = ajustes_(), sh = ss_().getSheetByName(mes);
+  // nº de lunes, martes... del mes (para detectar más viajes de los posibles)
+  var anioM = anioDeMes_(mes, aj), numM = MES_NUM[mes], diasSem = [0, 0, 0, 0, 0];
+  for (var dd = 1; dd <= new Date(anioM, numM, 0).getDate(); dd++) { var wd = new Date(anioM, numM - 1, dd).getDay(); if (wd >= 1 && wd <= 5) diasSem[wd - 1]++; }
+  var NOMBRES_DIA = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes'];
   if (!sh) throw new Error('Todavía no existe la hoja de ' + mes + '.');
   var c = columnasMes_(sh), idx = indicesCodigos_();
   var kR = {}, kP = {};
@@ -585,7 +598,7 @@ function calcularAsesoria_(mes) {
   var revisados = {};
   filas_(hoja_('_RevisadosAsesoria', ['Mes', 'Clave', 'Persona', 'Aviso', 'Por', 'Fecha'])).forEach(function (r) { if (norm_(r[0]) === norm_(mes)) revisados[String(r[1])] = { por: String(r[4] || ''), fecha: r[5] instanceof Date ? r[5].toISOString() : '' }; });
   function aviso(tipo, texto, quien, grupo, codigo) {
-    var clave = tipo + '|' + nN_(quien || '');
+    var clave = tipo + '|' + nN_(quien || '') + (tipo === 'raro' || tipo === 'cambio' ? '|' + nN_(texto).slice(0, 60) : '');
     avisos.push({ tipo: tipo, texto: texto, persona: quien || '', grupo: grupo || '', codigo: codigo || '', clave: clave, revisado: !!revisados[clave], revisadoPor: revisados[clave] ? revisados[clave].por : '' });
   }
 
@@ -599,6 +612,12 @@ function calcularAsesoria_(mes) {
     var sab = numTexto_(r[c.partidos]).n, aus = numTexto_(r[c.ausencias]).n, sus = numTexto_(r[c.sust]).n;
     var esp = numTexto_(r[c.km]), pea = numTexto_(r[c.peajes]);
     var hayAlgo = viajes.some(Boolean) || sab || aus || sus || esp.n || pea.n;
+    var obs = String(r[c.obs] || '').trim();
+    var cc0 = (codigoDe_(idx, n, a1, a2) || {}).codigo || '';
+    viajes.forEach(function (v, i) { if (v > diasSem[i]) aviso('raro', v + ' viajes los ' + NOMBRES_DIA[i] + ', pero el mes solo tiene ' + diasSem[i], quien, g, cc0); });
+    if (esp.n > 0 && !obs) aviso('raro', esp.n + ' km especiales sin explicar en observaciones', quien, g, cc0);
+    if (sus > 0 && !obs) aviso('raro', sus + ' sustitución(es) sin indicar a quién sustituye', quien, g, cc0);
+    if (aus > Math.max.apply(null, diasSem) * 2) aviso('raro', aus + ' ausencias: parecen demasiadas para un mes', quien, g, cc0);
     var cod = codigoDe_(idx, n, a1, a2);
     if (!cod || !cod.codigo) cod = deLista(a1, n) || cod;
     if (cod && cod.estado === 'Baja' && hayAlgo) aviso('baja', 'Marcado como baja pero tiene datos este mes. Si corresponde pagarlo y no está en la lista de la asesoría, añádelo a mano', quien, g, cod.codigo);
@@ -662,7 +681,26 @@ function calcularAsesoria_(mes) {
   });
   var tot = [0, 0, 0, 0, 0, 0];
   filas.concat(extras).forEach(function (f) { for (var i = 0; i < 6; i++) tot[i] += f[2 + i]; });
-  return { mes: mes, ordenMes: String(aj.ORDEN_ASESORIA_MES || ''), filas: filas, extras: extras, avisos: avisos,
+  // comparativa con el mes anterior
+  var anterior = null, mesAnt = MESES[MESES.indexOf(mes) - 1];
+  if (!sinAnterior && mesAnt && ss_().getSheetByName(mesAnt)) {
+    try {
+      var A = calcularAsesoria_(mesAnt, true); anterior = { mes: mesAnt, v: {} };
+      A.filas.concat(A.extras).forEach(function (f) { if (f[0]) anterior.v[f[0]] = f.slice(2); });
+      filas.concat(extras).forEach(function (f) {
+        if (!f[0]) return;
+        var a = anterior.v[f[0]] || [0, 0, 0, 0, 0, 0], v = f.slice(2), cambios = [];
+        if (v[4] - a[4] >= 100 && v[4] >= a[4] * 1.8) cambios.push('km ' + Math.round(v[4]) + ' (antes ' + Math.round(a[4]) + ')');
+        var est = estados[f[0]], confirmado = est && est.total && est.ok >= est.total;
+        if (confirmado && a[4] - v[4] >= 150 && v[4] <= a[4] * 0.4) cambios.push('km ' + Math.round(v[4]) + ' (antes ' + Math.round(a[4]) + ')');
+        if (v[2] - a[2] <= -60) cambios.push('ausencias ' + v[2] + ' € (antes ' + a[2] + ' €)');
+        if (v[3] - a[3] >= 60) cambios.push('complemento ' + v[3] + ' € (antes ' + a[3] + ' €)');
+        if (v[5] - a[5] >= 20) cambios.push('peajes ' + v[5] + ' € (antes ' + a[5] + ' €)');
+        if (cambios.length) aviso('cambio', 'Mucho cambio respecto a ' + mesAnt + ': ' + cambios.join(', '), f[1], '', f[0]);
+      });
+    } catch (e) { anterior = null; }
+  }
+  return { mes: mes, ordenMes: String(aj.ORDEN_ASESORIA_MES || ''), filas: filas, extras: extras, avisos: avisos, anterior: anterior,
     totales: tot.map(redondea_), personas: Object.keys(personas).length, complementos: complementos, estados: estados };
 }
 
@@ -768,6 +806,24 @@ var ACCIONES = {
     if (p.fresco) limpiarCache_();
     comprobarMes_(p.mes, ajustes_(), false);
     return calcularAsesoria_(p.mes);
+  },
+
+  /** Historial de cambios de un monitor (quién y cuándo), desde _Registro. */
+  historial: function (p) {
+    var u = usuario_(p.codigo);
+    comprobarGrupo_(u, p.grupo);
+    var nom = nN_(p.nombre || ''), g = nN_(p.grupo || ''), out = [];
+    var sh = hoja_('_Registro', H_REGISTRO), n = sh.getLastRow();
+    if (n < 2) return { cambios: [] };
+    var desde = Math.max(2, n - 3000), f = sh.getRange(desde, 1, n - desde + 1, 4).getValues();
+    for (var i = f.length - 1; i >= 0 && out.length < 30; i--) {
+      var det = nN_(f[i][3]);
+      if (det.indexOf(nom) >= 0 && (!g || det.indexOf(g) >= 0)) {
+        var partes = String(f[i][3]).split(' · ');
+        out.push({ fecha: f[i][0] instanceof Date ? f[i][0].toISOString() : String(f[i][0]), por: String(f[i][1]), accion: String(f[i][2]), mes: partes[0] || '', detalle: partes.slice(3).join(' · ') });
+      }
+    }
+    return { cambios: out };
   },
 
   /** Marcar / desmarcar un aviso como revisado (solo administración). */
@@ -887,7 +943,10 @@ var ACCIONES = {
       }
       if (!hecho) shD.appendRow([p.mes, p.grupo, p.key, dias.join(','), ahora, u.persona]);
       invalidarMes_(p.mes);
-      log_(u.persona, 'Guardar monitor', p.mes + ' · ' + p.grupo + ' · ' + m.nombre + ' ' + m.ap1 + ' · días ' + dias.join(','));
+      var resumen = [];
+      if (num_(p.ausencias)) resumen.push(num_(p.ausencias) + ' aus.'); if (num_(p.sust)) resumen.push(num_(p.sust) + ' sust.');
+      if (num_(p.partidos)) resumen.push(num_(p.partidos) + ' liga'); if (num_(p.km)) resumen.push(num_(p.km) + ' km'); if (num_(p.peajes)) resumen.push(num_(p.peajes) + ' € peajes');
+      log_(u.persona, 'Guardar monitor', p.mes + ' · ' + p.grupo + ' · ' + m.nombre + ' ' + m.ap1 + ' ' + m.ap2 + ' · ' + conteo.reduce(function (a, b) { return a + b; }, 0) + ' viajes' + (resumen.length ? ' · ' + resumen.join(', ') : ' · sin incidencias'));
       return { ok: true, conteo: conteo, actualizado: ahora.toISOString() };
     });
   },
