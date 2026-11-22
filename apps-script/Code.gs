@@ -26,6 +26,8 @@
  * ================================================================ */
 var URL_HOJA_REGISTRO = '';   // basta pegarla UNA vez: queda guardada aunque luego actualices el código
 
+var VERSION_SERVIDOR = '2026-11-22';
+
 var MESES = ['Octubre', 'Noviembre', 'Diciembre', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'];
 var MES_NUM = { Octubre: 10, Noviembre: 11, Diciembre: 12, Enero: 1, Febrero: 2, Marzo: 3, Abril: 4, Mayo: 5, Junio: 6 };
 var DIAS = ['L', 'M', 'X', 'J', 'V'];
@@ -99,11 +101,11 @@ function filas_(sh) {
 }
 
 /** Lecturas de configuración en caché 60 s (acelera mucho cada llamada). */
-function cacheado_(clave, fn) {
+function cacheado_(clave, fn, segundos) {
   var c = CacheService.getScriptCache(), v = c.get(clave);
   if (v) return JSON.parse(v);
   var r = fn();
-  try { c.put(clave, JSON.stringify(r), 60); } catch (e) { }
+  try { c.put(clave, JSON.stringify(r), segundos || 60); } catch (e) { }
   return r;
 }
 function filasCache_(nombre) {
@@ -114,11 +116,31 @@ function filasCache_(nombre) {
 function limpiarCache_() { CacheService.getScriptCache().removeAll(['f__Accesos', 'f__Monitores', 'f__Festivos', 'f__Ajustes', 'f__Codigos', 'f__Maestro', 'f__Coordinadores']); }
 
 function ajustes_() {
-  var out = { TEMPORADA_INICIO: 2026, MESES_CERRADOS: '' };
+  var out = { TEMPORADA_INICIO: 2026, MESES_CERRADOS: '', MESES_ABIERTOS: '', CIERRE_AUTO_DIA: 3 };
   filasCache_('_Ajustes').forEach(function (r) { if (r[0]) out[String(r[0]).trim()] = r[1]; });
   out.TEMPORADA_INICIO = parseInt(out.TEMPORADA_INICIO, 10) || 2026;
-  out.cerrados = String(out.MESES_CERRADOS || '').split(/[;,]/).map(function (s) { return norm_(s); }).filter(String);
+  var lista = function (v) { return String(v || '').split(/[;,]/).map(function (s) { return norm_(s); }).filter(String); };
+  out.manuales = lista(out.MESES_CERRADOS);
+  out.abiertos = lista(out.MESES_ABIERTOS);
+  out.cierreDia = parseInt(out.CIERRE_AUTO_DIA, 10); if (isNaN(out.cierreDia)) out.cierreDia = 3;
+  // cierre automático: el mes se bloquea el día "cierreDia" del mes siguiente (0 = desactivado)
+  out.fechaCierre = {}; out.cerrados = out.manuales.slice();
+  var hoy = new Date();
+  MESES.forEach(function (m) {
+    if (!out.cierreDia) return;
+    var y = MES_NUM[m] >= 9 ? out.TEMPORADA_INICIO : out.TEMPORADA_INICIO + 1;
+    var f = new Date(y, MES_NUM[m], out.cierreDia);           // mes siguiente (índice 0-based = MES_NUM)
+    out.fechaCierre[m] = Utilities.formatDate ? Utilities.formatDate(f, 'Europe/Madrid', 'yyyy-MM-dd') : f.toISOString().slice(0, 10);
+    if (hoy >= f && out.abiertos.indexOf(norm_(m)) < 0 && out.cerrados.indexOf(norm_(m)) < 0) out.cerrados.push(norm_(m));
+  });
   return out;
+}
+
+/** Escribe (o crea) una clave en _Ajustes. */
+function setAjuste_(clave, valor, nota) {
+  var sh = hoja_('_Ajustes', H_AJUSTES), f = filas_(sh);
+  for (var i = 0; i < f.length; i++) if (String(f[i][0]).trim() === clave) { sh.getRange(i + 2, 2).setValue(valor); return; }
+  sh.appendRow([clave, valor, nota || '']);
 }
 
 function anioDeMes_(mes, aj) { return MES_NUM[mes] >= 9 ? aj.TEMPORADA_INICIO : aj.TEMPORADA_INICIO + 1; }
@@ -494,7 +516,7 @@ function datosMesTodos_(mes, aj) {
         .some(function (col) { var v = r[col]; return v !== '' && v != null && String(v).toLowerCase() !== 'x'; });
       m.estado = d ? 'guardado' : (conDatos ? 'enhoja' : 'pendiente');
       var kp2 = nN_(m.nombre + ' ' + m.ap1 + ' ' + m.ap2), kmd = kmR[nN_(g) + '|' + kp2] || kmP[kp2];
-      if (kmd) m.km = kmd;
+      if (kmd) { m.km = kmd; if (!m.fijos.length) m.fijos = [0, 1, 2, 3, 4].filter(function (i) { return kmd[i] > 0; }); }
       return m;
     }).filter(function (m) { return !(m.estado === 'pendiente' && bajas[nN_(m.nombre + ' ' + m.ap1 + ' ' + m.ap2)]); });
   });
@@ -717,6 +739,51 @@ function calcularAsesoria_(mes, sinAnterior) {
     totales: tot.map(redondea_), personas: Object.keys(personas).length, complementos: complementos, estados: estados };
 }
 
+// ================================================================ DÍAS FIJOS DE VIAJE
+/** Marca en _Monitores como "días fijos" los días en que cada monitor tiene km por viaje (_Maestro).
+ *  Quien no tiene km no tiene viajes que marcar. */
+function rellenarDiasFijosDesdeKm() {
+  var kmR = {}, kmP = {};
+  filas_(hoja_('_Maestro', H_MAESTRO)).forEach(function (r) {
+    if (!r[1]) return;
+    var km = [5, 6, 7, 8, 9].map(function (i) { return numTexto_(r[i]).n > 0; });
+    var kp = nN_(r[1] + ' ' + r[2] + ' ' + r[3]); kmR[nN_(r[0]) + '|' + kp] = km; if (!kmP[kp]) kmP[kp] = km;
+  });
+  var sh = hoja_('_Monitores', H_MONITORES), f = filas_(sh), con = 0;
+  if (!f.length) return 'No hay monitores.';
+  var vals = f.map(function (r) {
+    var kp = nN_(r[1] + ' ' + r[2] + ' ' + r[3]), km = kmR[nN_(r[0]) + '|' + kp] || kmP[kp] || [false, false, false, false, false];
+    if (km.some(Boolean)) con++;
+    return km;
+  });
+  sh.getRange(2, 5, vals.length, 5).setValues(vals);
+  setAjuste_('DIAS_FIJOS_DESDE_KM', new Date(), 'Días fijos rellenados desde los km por viaje del Generador');
+  limpiarCache_();
+  MESES.forEach(function (m) { invalidarMes_(m); });
+  return 'Días fijos de viaje marcados para ' + con + ' monitores con desplazamiento (el resto sin días fijos).';
+}
+
+// ================================================================ SERVIDOR DESPIERTO
+/** Se ejecuta cada 5 minutos (de 7 a 23 h): deja preparados en memoria los datos del mes en curso para que la app responda al instante. */
+function mantenerDespierto() {
+  var h = new Date().getHours(); if (h < 7 || h > 23) return;
+  limpiarCache_();
+  var aj = ajustes_(), hoy = new Date().getMonth() + 1;
+  MESES.forEach(function (m) {
+    if (MES_NUM[m] !== hoy && MES_NUM[m] !== (hoy === 1 ? 12 : hoy - 1)) return;
+    if (!ss_().getSheetByName(m)) return;
+    try { CacheService.getScriptCache().put('mes_' + m, JSON.stringify(datosMesTodos_(m, aj)), 420); } catch (e) { }
+  });
+  ['_Accesos', '_Monitores', '_Festivos', '_Ajustes', '_Codigos', '_Maestro'].forEach(function (n) { try { filasCache_(n); } catch (e) { } });
+}
+/** Ejecutar UNA vez desde el editor: crea el activador de mantenerDespierto. */
+function activarDespertador() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'mantenerDespierto') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('mantenerDespierto').timeBased().everyMinutes(5).create();
+  mantenerDespierto();
+  return 'Servidor despierto activado (cada 5 minutos, de 7 a 23 h).';
+}
+
 // ---------------------------------------------------------------- bloqueo (reentrante dentro de una misma llamada)
 var _bloqueado = false;
 function conBloqueo_(fn) {
@@ -736,13 +803,15 @@ var ACCIONES = {
 
   login: function (p) {
     var u = usuario_(p.codigo), aj = ajustes_();
+    if (u.admin && !aj.DIAS_FIJOS_DESDE_KM) { try { rellenarDiasFijosDesdeKm(); aj = ajustes_(); } catch (e) { } }
     var hoy = new Date(), mesHoy = null;
     MESES.forEach(function (m) { if (MES_NUM[m] === hoy.getMonth() + 1) mesHoy = m; });
     return {
       persona: u.persona, grupos: u.grupos, admin: u.admin, responsables: u.responsables, contactos: u.contactos,
       meses: mesesDisponibles_(),
       mesActual: (function () { var d = mesesDisponibles_(); return d.indexOf(mesHoy) >= 0 ? mesHoy : d[d.length - 1]; })(),
-      cerrados: MESES.filter(function (m) { return aj.cerrados.indexOf(norm_(m)) >= 0; })
+      cerrados: MESES.filter(function (m) { return aj.cerrados.indexOf(norm_(m)) >= 0; }),
+      cierreDia: aj.cierreDia, fechaCierre: aj.fechaCierre, version: VERSION_SERVIDOR
     };
   },
 
@@ -751,7 +820,8 @@ var ACCIONES = {
     comprobarMes_(p.mes, aj, false);
     var grupos = p.grupo ? [p.grupo] : u.grupos;
     grupos.forEach(function (g) { comprobarGrupo_(u, g); });
-    var todo = cacheado_('mes_' + p.mes, function () { return datosMesTodos_(p.mes, aj); });
+    if (p.fresco) invalidarMes_(p.mes);
+    var todo = cacheado_('mes_' + p.mes, function () { return datosMesTodos_(p.mes, aj); }, 300);
     var porGrupo = {};
     grupos.forEach(function (g) {
       var k = Object.keys(todo.grupos).filter(function (x) { return norm_(x) === norm_(g); })[0];
@@ -797,108 +867,29 @@ var ACCIONES = {
     if (!u.admin) throw new Error('Solo para administración.');
     var lista = (p.meses || []).filter(function (m) { return MESES.indexOf(m) >= 0; });
     return conBloqueo_(function () {
-      var sh = hoja_('_Ajustes', H_AJUSTES), filas = filas_(sh), fila = -1;
-      for (var i = 0; i < filas.length; i++) if (String(filas[i][0]).trim() === 'MESES_CERRADOS') { fila = i + 2; break; }
-      var actuales = fila > 0 ? String(filas[fila - 2][1] || '').split(/[;,]/).map(function (x) { return x.trim(); }).filter(String) : [];
-      var set = {}; actuales.forEach(function (m) { var k = MESES.filter(function (x) { return norm_(x) === norm_(m); })[0]; if (k) set[k] = 1; });
-      lista.forEach(function (m) { if (p.cerrar) set[m] = 1; else delete set[m]; });
-      var valor = MESES.filter(function (m) { return set[m]; }).join('; ');
-      if (fila > 0) sh.getRange(fila, 2).setValue(valor);
-      else sh.appendRow(['MESES_CERRADOS', valor, 'Meses que ya no se pueden editar desde la app (salvo administración)']);
+      var aj = ajustes_(), cerr = {}, abie = {};
+      aj.manuales.forEach(function (m) { var k = MESES.filter(function (x) { return norm_(x) === m; })[0]; if (k) cerr[k] = 1; });
+      aj.abiertos.forEach(function (m) { var k = MESES.filter(function (x) { return norm_(x) === m; })[0]; if (k) abie[k] = 1; });
+      lista.forEach(function (m) { if (p.cerrar) { cerr[m] = 1; delete abie[m]; } else { delete cerr[m]; abie[m] = 1; } });
+      setAjuste_('MESES_CERRADOS', MESES.filter(function (m) { return cerr[m]; }).join('; '), 'Meses bloqueados a mano');
+      setAjuste_('MESES_ABIERTOS', MESES.filter(function (m) { return abie[m]; }).join('; '), 'Meses reabiertos a mano aunque haya pasado su cierre automático');
       limpiarCache_();
       lista.forEach(function (m) { invalidarMes_(m); });
       log_(u.persona, p.cerrar ? 'Bloquear' : 'Desbloquear', lista.join(', '));
-      return { cerrados: MESES.filter(function (m) { return set[m]; }) };
+      var nuevo = ajustes_();
+      return { cerrados: MESES.filter(function (m) { return nuevo.cerrados.indexOf(norm_(m)) >= 0; }), cierreDia: nuevo.cierreDia, fechaCierre: nuevo.fechaCierre };
     });
   },
 
-  /** Hoja de la asesoría del mes, calculada (solo administración). */
-  asesoria: function (p) {
+  /** Día de cierre automático (0 = desactivado). */
+  cierreAuto: function (p) {
     var u = usuario_(p.codigo);
     if (!u.admin) throw new Error('Solo para administración.');
-    if (p.fresco) limpiarCache_();
-    comprobarMes_(p.mes, ajustes_(), false);
-    return calcularAsesoria_(p.mes);
-  },
-
-  /** Historial de cambios de un monitor (quién y cuándo), desde _Registro. */
-  historial: function (p) {
-    var u = usuario_(p.codigo);
-    comprobarGrupo_(u, p.grupo);
-    var nom = nN_(p.nombre || ''), g = nN_(p.grupo || ''), out = [];
-    var sh = hoja_('_Registro', H_REGISTRO), n = sh.getLastRow();
-    if (n < 2) return { cambios: [] };
-    var desde = Math.max(2, n - 3000), f = sh.getRange(desde, 1, n - desde + 1, 4).getValues();
-    for (var i = f.length - 1; i >= 0 && out.length < 30; i--) {
-      var det = nN_(f[i][3]);
-      if (det.indexOf(nom) >= 0 && (!g || det.indexOf(g) >= 0)) {
-        var partes = String(f[i][3]).split(' · ');
-        out.push({ fecha: f[i][0] instanceof Date ? f[i][0].toISOString() : String(f[i][0]), por: String(f[i][1]), accion: String(f[i][2]), mes: partes[0] || '', detalle: partes.slice(3).join(' · ') });
-      }
-    }
-    return { cambios: out };
-  },
-
-  /** Marcar / desmarcar un aviso como revisado (solo administración). */
-  revisado: function (p) {
-    var u = usuario_(p.codigo);
-    if (!u.admin) throw new Error('Solo para administración.');
-    return conBloqueo_(function () {
-      var sh = hoja_('_RevisadosAsesoria', ['Mes', 'Clave', 'Persona', 'Aviso', 'Por', 'Fecha']), f = filas_(sh);
-      for (var i = f.length - 1; i >= 0; i--) if (norm_(f[i][0]) === norm_(p.mes) && String(f[i][1]) === String(p.clave)) sh.deleteRow(i + 2);
-      if (!p.quitar) sh.appendRow([p.mes, p.clave, p.persona || '', p.texto || '', u.persona, new Date()]);
-      return { ok: true };
-    });
-  },
-
-  /** Guardar la lista (código + nombre) de la asesoría, en su orden. */
-  ordenAsesoria: function (p) {
-    var u = usuario_(p.codigo);
-    if (!u.admin) throw new Error('Solo para administración.');
-    var lista = (p.lista || []).filter(function (r) { return r && String(r[0]).trim(); });
-    if (lista.length < 5) throw new Error('La lista parece incompleta (' + lista.length + ' filas).');
-    return conBloqueo_(function () {
-      var sh = hoja_('_OrdenAsesoria', H_ORDEN);
-      if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).clearContent();
-      sh.getRange(2, 1, lista.length, 2).setValues(lista.map(function (r) { return [String(r[0]).trim(), String(r[1] || '').trim()]; }));
-      var aj = hoja_('_Ajustes', H_AJUSTES), f = filas_(aj), hecho = false;
-      for (var i = 0; i < f.length; i++) if (f[i][0] === 'ORDEN_ASESORIA_MES') { aj.getRange(i + 2, 2).setValue(p.mes || ''); hecho = true; }
-      if (!hecho) aj.appendRow(['ORDEN_ASESORIA_MES', p.mes || '', 'Mes de la última lista de la asesoría cargada']);
-      limpiarCache_();
-      log_(u.persona, 'Lista asesoría', (p.mes || '') + ' · ' + lista.length + ' personas');
-      return { filas: lista.length };
-    });
-  },
-
-  /** Añadir o borrar un complemento / plus distancia manual (solo administración). */
-  complemento: function (p) {
-    var u = usuario_(p.codigo);
-    if (!u.admin) throw new Error('Solo para administración.');
-    return conBloqueo_(function () {
-      var sh = hoja_('_ComplementosAsesoria', H_AJ_AS);
-      if (p.borrar) {
-        var f = filas_(sh);
-        for (var i = f.length - 1; i >= 0; i--) if (String(f[i][8]) === String(p.borrar)) { sh.deleteRow(i + 2); log_(u.persona, 'Borrar complemento', f[i][2] + ' ' + f[i][4]); return { ok: true }; }
-        throw new Error('No encontrado.');
-      }
-      if (MESES.indexOf(p.mes) < 0) throw new Error('Mes no válido.');
-      var cant = numTexto_(p.cantidad).n;
-      if (!p.codigoAsesoria || !cant) throw new Error('Falta la persona o la cantidad.');
-      if (p.editar) {
-        var fe = filas_(sh);
-        for (var j = 0; j < fe.length; j++) if (String(fe[j][8]) === String(p.editar)) {
-          sh.getRange(j + 2, 2, 1, 5).setValues([[String(p.codigoAsesoria), p.nombre || '', p.tipo === TIPO_PLUS ? TIPO_PLUS : TIPO_COMPLEMENTO, cant, p.motivo || '']]);
-          sh.getRange(j + 2, 7, 1, 2).setValues([[new Date(), u.persona]]);
-          log_(u.persona, 'Editar complemento', p.mes + ' · ' + p.nombre + ' · ' + fe[j][4] + ' → ' + cant);
-          return { id: p.editar };
-        }
-        throw new Error('No encontrado (puede que lo hayan borrado).');
-      }
-      var id = Utilities.getUuid ? Utilities.getUuid() : String(Date.now());
-      sh.appendRow([p.mes, String(p.codigoAsesoria), p.nombre || '', p.tipo === TIPO_PLUS ? TIPO_PLUS : TIPO_COMPLEMENTO, cant, p.motivo || '', new Date(), u.persona, id]);
-      log_(u.persona, 'Complemento', p.mes + ' · ' + p.nombre + ' · ' + cant);
-      return { id: id };
-    });
+    var d = Math.max(0, Math.min(28, parseInt(p.dia, 10) || 0));
+    setAjuste_('CIERRE_AUTO_DIA', d, 'Día del mes siguiente en que se bloquea cada mes (0 = sin cierre automático)');
+    limpiarCache_();
+    var nuevo = ajustes_();
+    return { cierreDia: d, cerrados: MESES.filter(function (m) { return nuevo.cerrados.indexOf(norm_(m)) >= 0; }), fechaCierre: nuevo.fechaCierre };
   },
 
   /** Varios guardados en una sola llamada (más rápido desde el móvil). */
@@ -1045,9 +1036,13 @@ function onOpen() {
     .addItem('Crear hoja del mes siguiente', 'menuMesSiguiente_')
     .addItem('Cargar festivos del calendario 26-27', 'menuFestivos_')
     .addItem('Cargar datos de la asesoría (Generador)', 'menuAsesoria_')
+    .addItem('Marcar días fijos de viaje (según km)', 'menuDiasFijos_')
+    .addItem('Activar servidor despierto', 'menuDespertador_')
     .addItem('Aplicar cambios de configuración ya', 'limpiarCache_')
     .addToUi();
 }
+function menuDiasFijos_() { SpreadsheetApp.getUi().alert(rellenarDiasFijosDesdeKm()); }
+function menuDespertador_() { SpreadsheetApp.getUi().alert(activarDespertador()); }
 function menuAsesoria_() { SpreadsheetApp.getUi().alert(cargarDatosAsesoria()); }
 function menuFestivos_() { SpreadsheetApp.getUi().alert(cargarFestivosCalendario()); }
 function menuMesSiguiente_() {

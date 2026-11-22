@@ -242,6 +242,33 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 .conteo small.ckm{display:block;font-size:10px;color:var(--texto-azul);font-weight:700}
 .kmmes{margin-top:10px;font-size:13px;background:var(--fondo);border-radius:10px;padding:8px 10px}
 .kmmes span{color:var(--gris);font-size:12px}
+
+/* ---------- viajes / cierre / versión */
+.sinviajes summary{list-style:none;cursor:pointer}.sinviajes summary::-webkit-details-marker{display:none}
+.sinviajes[open] summary{margin-bottom:8px}
+.recordatorio.cierre{border-left-color:var(--c-aus)}
+.cierre-auto{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:13px;font-weight:700}
+.cierre-auto select{padding:8px 10px;border-radius:10px;border:1.5px solid var(--linea);background:var(--card);color:var(--tinta)}
+#avisoVersion{background:var(--rojo-suave);color:var(--c-aus);font-size:13px;font-weight:700;padding:10px 16px;text-align:center}
+/* ---------- deslizar para confirmar */
+.swipe{position:relative;border-radius:14px;background:var(--verde);overflow:hidden}
+.swipe-ok{position:absolute;left:18px;top:50%;transform:translateY(-50%);color:#fff;font-weight:800;font-size:14px;opacity:.75}
+.swipe.listo .swipe-ok{opacity:1}
+.swipe .mon{position:relative;touch-action:pan-y;transition:transform .2s ease}
+/* ---------- pestañas con icono */
+.tab svg{width:20px;height:20px;display:none}
+@media (max-width:899px){
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--cab);padding:4px 4px calc(4px + env(safe-area-inset-bottom));box-shadow:0 -4px 18px rgba(0,0,0,.18);gap:0}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;font-size:11px;border-bottom:0;border-top:3px solid transparent;border-radius:0}
+  .tab svg{display:block}
+  .tab.on{border-top-color:var(--rojo-2);color:#fff}
+  body.una-tab .tabs{display:none}
+  main{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+  #instalarBanner{bottom:calc(76px + env(safe-area-inset-bottom))}
+  #toast{bottom:calc(84px + env(safe-area-inset-bottom))}
+  body.conBanner #toast{bottom:calc(190px + env(safe-area-inset-bottom))}
+  header{padding-bottom:4px}
+}
 /* ---------- retoques visuales */
 .anillo-guardado,.anillo-enviando{box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--verde)}
 .anillo-enhoja{box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--ambar)}
@@ -470,12 +497,13 @@ b.verde{color:var(--verde)}
     </div>
     <div class="meses" id="meses"></div>
     <div class="tabs">
-      <button class="tab on" data-tab="monitores">Monitores</button>
-      <button class="tab" data-tab="mis" id="tabMis">Mis datos</button>
-      <button class="tab oculto" data-tab="resumen" id="tabRes">Resumen</button>
-      <button class="tab oculto" data-tab="asesoria" id="tabAse">Asesoría</button>
+      <button class="tab on" data-tab="monitores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14c2.4.2 4 1.8 4.5 4.5"/></svg><span>Monitores</span></button>
+      <button class="tab" data-tab="mis" id="tabMis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.8-3.8 3.6-6 7-6s6.2 2.2 7 6"/></svg><span>Mis datos</span></button>
+      <button class="tab oculto" data-tab="resumen" id="tabRes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg><span>Resumen</span></button>
+      <button class="tab oculto" data-tab="asesoria" id="tabAse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg><span>Asesoría</span></button>
     </div>
   </header>
+  <div id="avisoVersion" class="oculto">⚙️ Falta actualizar el código de Apps Script: algunas funciones nuevas no irán hasta que pegues el último Code.gs y hagas «Nueva versión».</div>
   <main id="main"></main>
 </section>
 
@@ -519,6 +547,7 @@ b.verde{color:var(--verde)}
 const API_URL = window.API_URL || '';
 
 const DIAS_CORTOS = ['L','M','X','J','V'];
+const VERSION_REQUERIDA = '2026-11-22';   // versión de Code.gs que necesita esta app
 const DIAS_LARGOS = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
 const MESES_NUM = {Octubre:10,Noviembre:11,Diciembre:12,Enero:1,Febrero:2,Marzo:3,Abril:4,Mayo:5,Junio:6};
 
@@ -587,6 +616,9 @@ function mostrarApp() {
   $('#tabMis').classList.toggle('oculto', !u.responsables.length);
   $('#tabRes').classList.toggle('oculto', !u.admin);
   $('#tabAse').classList.toggle('oculto', !u.admin);
+  const viejo = u.admin && (u.version || '') < VERSION_REQUERIDA;
+  $('#avisoVersion').classList.toggle('oculto', !viejo);
+  document.body.classList.toggle('una-tab', [...document.querySelectorAll('.tab')].filter(t => !t.classList.contains('oculto')).length < 2);
   pintarMeses();
 }
 
@@ -626,8 +658,8 @@ $('#entrar').onclick = () => entrar($('#codigo').value);
 $('#codigo').addEventListener('keydown', e => { if (e.key === 'Enter') entrar($('#codigo').value); });
 
 /** Pide los datos de un mes (todos los grupos). Con el servidor antiguo, grupo a grupo. */
-async function pedirMes(mes, u) {
-  if (!S.antiguo) return api('mes', { mes });
+async function pedirMes(mes, u, fresco) {
+  if (!S.antiguo) return api('mes', fresco ? { mes, fresco:true } : { mes });
   u = u || S.user;
   const partes = await Promise.all(u.grupos.map(g => api('mes', { mes, grupo:g })));
   const d = Object.assign({}, partes[0], { grupos:{} }); partes.forEach((p, i) => d.grupos[u.grupos[i]] = p.monitores);
@@ -708,7 +740,7 @@ async function cargar(forzar) {
   if (tab === 'asesoria') return refrescarAsesoria(forzar);
   if (d && !forzar && Date.now() - d._fresco < 60000) return;     // reciente: no hace falta volver a pedir
   try {
-    const nuevo = fusionar(await pedirMes(mes));
+    const nuevo = fusionar(await pedirMes(mes, null, forzar === true));
     S.datos[mes] = nuevo; guardarCache(); marcarSinRed(false);
     if (S.mes === mes && S.tab === 'monitores' && !S.ficha) pintar();
   } catch (e) {
@@ -729,12 +761,12 @@ function pintarLista() {
   const f = S.filtro.toLowerCase();
   const lista = d.monitores.filter(m => !f || `${m.nombre} ${m.ap1} ${m.ap2}`.toLowerCase().includes(f));
   const rapidos = bloq(d) ? [] : d.monitores.filter(m => m.estado === 'pendiente');
-  const aviso = avisoPendientes(d);
+  const aviso = avisoCierre(d) + avisoPendientes(d);
   main.innerHTML = `
     ${grupos}
     ${bloq(d) ? `<div class="aviso">🔒 ${esc(d.mes)} está cerrado: puedes consultar pero no modificar.</div>` : ''}
     ${S.user.admin ? `<div class="bloqueo ${d.cerrado?'on':''}">
-        <div><b>${d.cerrado ? '🔒 ' + esc(d.mes) + ' bloqueado' : '🔓 ' + esc(d.mes) + ' abierto'}</b><br><span>${d.cerrado ? 'Los responsables solo pueden consultar. Tú sí puedes editar.' : 'Los responsables pueden apuntar y modificar.'}</span></div>
+        <div><b>${d.cerrado ? '🔒 ' + esc(d.mes) + ' bloqueado' : '🔓 ' + esc(d.mes) + ' abierto'}</b><br><span>${d.cerrado ? 'Los responsables solo pueden consultar. Tú sí puedes editar.' : 'Los responsables pueden apuntar y modificar.' + ((S.user.fechaCierre||{})[d.mes] && S.user.cierreDia ? ' Se bloquea solo el ' + new Date(S.user.fechaCierre[d.mes] + 'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long'}) + '.' : '')}</span></div>
         <button id="btnBloq">${d.cerrado ? 'Desbloquear' : 'Bloquear'}</button></div>` : ''}
     <div class="resumen-fila">
     <div class="resumen">
@@ -748,7 +780,7 @@ function pintarLista() {
     ${rapidos.length > 1 ? `<button class="lote-ok" id="loteOk"><span><b>${rapidos.length} pendientes</b></span><span class="lote-btn">✓ Todos OK, sin incidencias</span></button>` : ''}
     <div class="lista">${lista.map(m => {
       const rapido = !bloq(d) && (m.estado === 'pendiente' || m.estado === 'enhoja' || m.estado === 'error');
-      return `<div class="mon" role="button" tabindex="0" data-k="${esc(m.key)}">
+      return `${rapido ? `<div class="swipe" data-sw="${esc(m.key)}"><span class="swipe-ok">✓ Todo OK</span>` : ''}<div class="mon" role="button" tabindex="0" data-k="${esc(m.key)}">
         ${avatarMon(m)}
         <div class="info">
           <div class="nom">${esc(m.nombre)} ${esc(m.ap1)} ${esc(m.ap2)}</div>
@@ -758,15 +790,16 @@ function pintarLista() {
         </div>
         ${m.estado !== 'pendiente' ? `<span class="estado ${m.estado}">${{guardado:'✓ Hecho',pendiente:'Pendiente',enhoja:'En hoja',enviando:'↑ Enviando',error:'⚠ Error'}[m.estado]}</span>` : ''}
         ${rapido ? `<button class="rapido" data-ok="${esc(m.key)}" aria-label="Todo OK, sin incidencias" title="Todo OK, sin incidencias">✓</button>` : ''}
-      </div>`; }).join('') || '<div class="vacio">No hay monitores.</div>'}
+      </div>${rapido ? '</div>' : ''}`; }).join('') || '<div class="vacio">No hay monitores.</div>'}
     </div>
-    ${rapidos.length && !S._ayudaRapido ? '<p class="meta">Pulsa ✓ si el monitor no tiene ninguna incidencia este mes. Si tiene algo que apuntar, toca su nombre.</p>' : ''}`;
+    ${rapidos.length && !S._ayudaRapido ? '<p class="meta">Pulsa ✓ (o desliza el monitor a la derecha) si no tiene ninguna incidencia este mes. Si tiene algo que apuntar, toca su nombre.</p>' : ''}`;
   main.querySelectorAll('.grupo').forEach(b => b.onclick = () => { S.grupo = b.dataset.g; store.set('inc_grupo', S.grupo); S.filtro=''; pintar(); });
   main.querySelectorAll('.mon').forEach(b => {
-    b.onclick = e => { if (e.target.closest('.rapido')) return; abrirFicha(d.monitores.find(m => m.key === b.dataset.k)); };
+    b.onclick = e => { if (e.target.closest('.rapido') || b.dataset.swiped) return; abrirFicha(d.monitores.find(m => m.key === b.dataset.k)); };
     b.onkeydown = e => { if (e.key === 'Enter') b.click(); };
   });
   const bb = $('#btnBloq'); if (bb) bb.onclick = () => bloquearMeses([d.mes], !d.cerrado);
+  ligarDeslizar(main, d);
   main.querySelectorAll('.rapido').forEach(b => b.onclick = () => {
     confirmarSinIncidencias([d.monitores.find(m => m.key === b.dataset.ok)]);
     if (navigator.vibrate) navigator.vibrate(10);
@@ -804,7 +837,7 @@ async function bloquearMeses(meses, cerrar) {
   if (cerrar && !confirm(`¿Bloquear ${meses.join(', ')}? Los responsables podrán consultar pero no modificar nada.`)) return;
   try {
     const r = await api('bloquear', { meses, cerrar });
-    S.user.cerrados = r.cerrados;
+    S.user.cerrados = r.cerrados; if (r.fechaCierre) { S.user.fechaCierre = r.fechaCierre; S.user.cierreDia = r.cierreDia; }
     Object.values(S.datos).forEach(d => { if (d) d.cerrado = r.cerrados.includes(d.mes); });
     S.mis = {};
     guardarCache(); pintarMeses(); pintar();
@@ -814,8 +847,40 @@ async function bloquearMeses(meses, cerrar) {
   }
 }
 
+/** Gesto: deslizar un monitor pendiente a la derecha = «Todo OK, sin incidencias». */
+function ligarDeslizar(main, d) {
+  main.querySelectorAll('.swipe').forEach(w => {
+    const card = w.querySelector('.mon'); let x0 = 0, y0 = 0, dx = 0, activo = false, horizontal = null;
+    card.addEventListener('touchstart', e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; dx = 0; activo = true; horizontal = null; card.style.transition = 'none'; }, { passive:true });
+    card.addEventListener('touchmove', e => {
+      if (!activo) return; const t = e.touches[0], mx = t.clientX - x0, my = t.clientY - y0;
+      if (horizontal === null && (Math.abs(mx) > 8 || Math.abs(my) > 8)) horizontal = Math.abs(mx) > Math.abs(my);
+      if (!horizontal) return;
+      dx = Math.max(0, Math.min(mx, 160)); card.style.transform = `translateX(${dx}px)`; w.classList.toggle('listo', dx > 100);
+    }, { passive:true });
+    card.addEventListener('touchend', () => {
+      if (!activo) return; activo = false; card.style.transition = '';
+      if (dx > 100) {
+        card.style.transform = 'translateX(110%)'; card.dataset.swiped = '1';
+        if (navigator.vibrate) navigator.vibrate(15);
+        setTimeout(() => confirmarSinIncidencias([d.monitores.find(m => m.key === w.dataset.sw)]), 180);
+      } else { card.style.transform = ''; w.classList.remove('listo'); }
+      if (dx > 8) { card.dataset.swiped = '1'; setTimeout(() => delete card.dataset.swiped, 400); }
+    });
+  });
+}
+
 /* ---------- recordatorios dentro de la app */
 function pendientesDe(d) { return Object.values(d.grupos || {}).flat().filter(m => m.estado === 'pendiente' || m.estado === 'error').length; }
+/** Aviso de cierre: el día antes (y el mismo día por la mañana) de que el mes se bloquee solo. */
+function avisoCierre(d) {
+  const f = (S.user.fechaCierre || {})[d.mes]; if (!f || d.cerrado) return '';
+  const cierre = new Date(f + 'T00:00:00'), hoy = new Date(); hoy.setHours(0,0,0,0);
+  const dias = Math.round((cierre - hoy) / 864e5);
+  if (dias < 0 || dias > 2) return '';
+  const cuando = dias === 0 ? 'hoy' : dias === 1 ? 'mañana' : 'pasado mañana';
+  return `<div class="recordatorio cierre">🔒 <div><b>${d.mes} se cierra ${cuando} (${cierre.toLocaleDateString('es-ES',{day:'numeric',month:'long'})})</b><br><span>Después ya no se podrá modificar. Revisa que esté todo apuntado.</span></div></div>`;
+}
 function avisoPendientes(d) {
   if (d.cerrado) return '';
   const n = (d.monitores || []).filter(m => m.estado === 'pendiente' || m.estado === 'error').length;
@@ -913,19 +978,22 @@ function pintarFicha() {
   const conteo = [0,0,0,0,0]; hab.forEach(h => { if (F.sel.has(h.d)) conteo[h.wd]++; });
   const sinMarcar = hab.filter(h => m.fijos.includes(h.wd) && !fest[h.d] && !F.sel.has(h.d)).length;
   const propuesta = !Array.isArray(m.dias);
+  const sinViajes = !m.km && !m.fijos.length && !conteo.some(Boolean);
 
   $('#fCuerpo').innerHTML = `
     <div class="tarjeta">
-      <h3>Días que ha ido</h3>
-      <p class="ayuda">${propuesta
-        ? (m.estado==='enhoja' ? 'Marcado a partir de lo que ya había en la hoja. Revisa y guarda.' : 'Propuesta según sus días fijos. Desmarca los días que no fue y marca los extra.')
-        : 'Toca un día para marcarlo o desmarcarlo.'}</p>
+      ${sinViajes ? `<details class="sinviajes"><summary><h3 style="display:inline">🚗 Viajes</h3> <span class="ayuda">· No tiene km por viaje: no hay viajes que marcar. <u>Marcar igualmente</u></span></summary>` : ''}
+      ${sinViajes ? '' : `<h3>🚗 Viajes del mes</h3>`}
+      <p class="ayuda">${sinViajes ? 'Solo si este mes ha hecho algún viaje con desplazamiento.' : propuesta
+        ? (m.estado==='enhoja' ? 'Marcado a partir de lo que ya había en la hoja. Revisa y guarda.' : 'Cada día marcado es un viaje que se paga en km. Ya están sus días de viaje: desmarca los que no fue y marca los extra.')
+        : 'Cada día marcado es un viaje que se paga en km. Toca un día para marcarlo o desmarcarlo.'}</p>
       <div class="cal">${celdas}</div>
       <div class="conteo">${DIAS_CORTOS.map((x,i)=>`<div><b>${conteo[i]}</b>${x}${m.km && m.km[i] && conteo[i] ? `<small class="ckm">${String(Math.round(conteo[i]*m.km[i]*10)/10).replace('.',',')} km</small>` : ''}</div>`).join('')}</div>
       ${m.km ? `<div class="kmmes">🚗 Km de viajes este mes: <b>${String(Math.round(conteo.reduce((a,c,i)=>a+c*(m.km[i]||0),0)*10)/10).replace('.',',')} km</b><span> · ${DIAS_CORTOS.filter((x,i)=>m.km[i]).map(x=>x).join(', ')} con desplazamiento</span></div>` : ''}
-      ${sinMarcar && !bloq(dm) ? `<div class="pista">${sinMarcar} día${sinMarcar>1?'s':''} fijo${sinMarcar>1?'s':''} sin marcar
+      ${sinMarcar && !bloq(dm) ? `<div class="pista">${sinMarcar} día${sinMarcar>1?'s':''} de viaje sin marcar
           ${(F.v.ausencias||0) !== sinMarcar ? `<button id="usarAus">Poner en ausencias</button>`:''}</div>` : ''}
-      <div class="leyenda"><span><i style="background:var(--azul)"></i>Ha ido</span><span><i style="border:2px solid var(--borde-fijo);background:var(--fondo)"></i>Día fijo</span><span><i style="background:repeating-linear-gradient(135deg,var(--fondo) 0 3px,var(--linea) 3px 6px)"></i>Festivo</span></div>
+      <div class="leyenda"><span><i style="background:var(--azul)"></i>Viaje</span><span><i style="border:2px solid var(--borde-fijo);background:var(--fondo)"></i>Día de viaje habitual</span><span><i style="background:repeating-linear-gradient(135deg,var(--fondo) 0 3px,var(--linea) 3px 6px)"></i>Festivo</span></div>
+      ${sinViajes ? '</details>' : ''}
     </div>
 
     <div class="tarjeta">
@@ -1167,6 +1235,9 @@ function pintarResumen() {
     <details class="tarjeta noprint recs" ${S._bloqAbierto ? 'open' : ''} id="bloqMeses">
       <summary><span>🔒 Bloqueo de meses</span><span class="${S.user.cerrados.length ? 'pill-pend' : 'al-dia'}">${S.user.cerrados.length ? S.user.cerrados.length + ' bloqueado' + (S.user.cerrados.length>1?'s':'') : 'Todo abierto'}</span></summary>
       <p class="ayuda" style="margin-top:10px">Toca un mes para bloquearlo o desbloquearlo. Bloqueado: los responsables solo pueden consultar (tú sí puedes editar).</p>
+      <div class="cierre-auto"><span>⏱ Cierre automático:</span>
+        <select id="cierreDia">${[0,1,2,3,4,5,6,7,8,10,15].map(n => `<option value="${n}" ${n===(S.user.cierreDia??3)?'selected':''}>${n ? 'día ' + n + ' del mes siguiente' : 'desactivado'}</option>`).join('')}</select></div>
+      <p class="ase-nota" style="margin:6px 0 0">El día antes, los responsables ven el aviso de que se cierra. Si desbloqueas un mes ya cerrado, se queda abierto hasta que lo vuelvas a bloquear.</p>
       <div class="meses-bloq">${S.user.meses.map(m => `<button data-bq="${m}" class="${S.user.cerrados.includes(m)?'on':''}">${S.user.cerrados.includes(m)?'🔒':'🔓'} ${m}</button>`).join('')}</div>
       <div class="meses-bloq" style="margin-top:10px"><button data-bqall="1">🔒 Bloquear todos</button><button data-bqall="0">🔓 Desbloquear todos</button></div>
     </details>
@@ -1217,6 +1288,11 @@ function pintarResumen() {
   main.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { S.periodo = b.dataset.p; pintarResumen(); });
   const rc = main.querySelector('.recs'); if (rc) rc.ontoggle = () => { S._recsAbierto = rc.open; };
   const bm = $('#bloqMeses'); if (bm) bm.ontoggle = () => { S._bloqAbierto = bm.open; };
+  const cd = $('#cierreDia'); if (cd) cd.onchange = async () => {
+    try { const r = await api('cierreAuto', { dia: +cd.value }); Object.assign(S.user, { cierreDia:r.cierreDia, fechaCierre:r.fechaCierre, cerrados:r.cerrados });
+      Object.values(S.datos).forEach(d => { if (d) d.cerrado = r.cerrados.includes(d.mes); }); guardarCache(); pintarMeses(); toast(r.cierreDia ? 'Cierre automático: día ' + r.cierreDia : 'Cierre automático desactivado'); pintarResumen(); }
+    catch (e) { toast(/Acci[oó]n desconocida/.test(e.message) ? 'Actualiza el código de Apps Script' : e.message, true); }
+  };
   main.querySelectorAll('[data-bq]').forEach(b => b.onclick = () => bloquearMeses([b.dataset.bq], !S.user.cerrados.includes(b.dataset.bq)));
   main.querySelectorAll('[data-bqall]').forEach(b => b.onclick = () => bloquearMeses(S.user.meses.slice(), b.dataset.bqall === '1'));
   main.querySelectorAll('[data-met]').forEach(b => b.onclick = () => { S.metricaZona = b.dataset.met; pintarResumen(); });
