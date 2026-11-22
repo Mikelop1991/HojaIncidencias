@@ -892,6 +892,94 @@ var ACCIONES = {
     return { cierreDia: d, cerrados: MESES.filter(function (m) { return nuevo.cerrados.indexOf(norm_(m)) >= 0; }), fechaCierre: nuevo.fechaCierre };
   },
 
+  asesoria: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    if (p.fresco) limpiarCache_();
+    comprobarMes_(p.mes, ajustes_(), false);
+    return calcularAsesoria_(p.mes);
+  },
+
+  /** Historial de cambios de un monitor (quién y cuándo), desde _Registro. */
+  historial: function (p) {
+    var u = usuario_(p.codigo);
+    comprobarGrupo_(u, p.grupo);
+    var nom = nN_(p.nombre || ''), g = nN_(p.grupo || ''), out = [];
+    var sh = hoja_('_Registro', H_REGISTRO), n = sh.getLastRow();
+    if (n < 2) return { cambios: [] };
+    var desde = Math.max(2, n - 3000), f = sh.getRange(desde, 1, n - desde + 1, 4).getValues();
+    for (var i = f.length - 1; i >= 0 && out.length < 30; i--) {
+      var det = nN_(f[i][3]);
+      if (det.indexOf(nom) >= 0 && (!g || det.indexOf(g) >= 0)) {
+        var partes = String(f[i][3]).split(' · ');
+        out.push({ fecha: f[i][0] instanceof Date ? f[i][0].toISOString() : String(f[i][0]), por: String(f[i][1]), accion: String(f[i][2]), mes: partes[0] || '', detalle: partes.slice(3).join(' · ') });
+      }
+    }
+    return { cambios: out };
+  },
+
+  /** Marcar / desmarcar un aviso como revisado (solo administración). */
+  revisado: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    return conBloqueo_(function () {
+      var sh = hoja_('_RevisadosAsesoria', ['Mes', 'Clave', 'Persona', 'Aviso', 'Por', 'Fecha']), f = filas_(sh);
+      for (var i = f.length - 1; i >= 0; i--) if (norm_(f[i][0]) === norm_(p.mes) && String(f[i][1]) === String(p.clave)) sh.deleteRow(i + 2);
+      if (!p.quitar) sh.appendRow([p.mes, p.clave, p.persona || '', p.texto || '', u.persona, new Date()]);
+      return { ok: true };
+    });
+  },
+
+  /** Guardar la lista (código + nombre) de la asesoría, en su orden. */
+  ordenAsesoria: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    var lista = (p.lista || []).filter(function (r) { return r && String(r[0]).trim(); });
+    if (lista.length < 5) throw new Error('La lista parece incompleta (' + lista.length + ' filas).');
+    return conBloqueo_(function () {
+      var sh = hoja_('_OrdenAsesoria', H_ORDEN);
+      if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 2).clearContent();
+      sh.getRange(2, 1, lista.length, 2).setValues(lista.map(function (r) { return [String(r[0]).trim(), String(r[1] || '').trim()]; }));
+      var aj = hoja_('_Ajustes', H_AJUSTES), f = filas_(aj), hecho = false;
+      for (var i = 0; i < f.length; i++) if (f[i][0] === 'ORDEN_ASESORIA_MES') { aj.getRange(i + 2, 2).setValue(p.mes || ''); hecho = true; }
+      if (!hecho) aj.appendRow(['ORDEN_ASESORIA_MES', p.mes || '', 'Mes de la última lista de la asesoría cargada']);
+      limpiarCache_();
+      log_(u.persona, 'Lista asesoría', (p.mes || '') + ' · ' + lista.length + ' personas');
+      return { filas: lista.length };
+    });
+  },
+
+  /** Añadir o borrar un complemento / plus distancia manual (solo administración). */
+  complemento: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    return conBloqueo_(function () {
+      var sh = hoja_('_ComplementosAsesoria', H_AJ_AS);
+      if (p.borrar) {
+        var f = filas_(sh);
+        for (var i = f.length - 1; i >= 0; i--) if (String(f[i][8]) === String(p.borrar)) { sh.deleteRow(i + 2); log_(u.persona, 'Borrar complemento', f[i][2] + ' ' + f[i][4]); return { ok: true }; }
+        throw new Error('No encontrado.');
+      }
+      if (MESES.indexOf(p.mes) < 0) throw new Error('Mes no válido.');
+      var cant = numTexto_(p.cantidad).n;
+      if (!p.codigoAsesoria || !cant) throw new Error('Falta la persona o la cantidad.');
+      if (p.editar) {
+        var fe = filas_(sh);
+        for (var j = 0; j < fe.length; j++) if (String(fe[j][8]) === String(p.editar)) {
+          sh.getRange(j + 2, 2, 1, 5).setValues([[String(p.codigoAsesoria), p.nombre || '', p.tipo === TIPO_PLUS ? TIPO_PLUS : TIPO_COMPLEMENTO, cant, p.motivo || '']]);
+          sh.getRange(j + 2, 7, 1, 2).setValues([[new Date(), u.persona]]);
+          log_(u.persona, 'Editar complemento', p.mes + ' · ' + p.nombre + ' · ' + fe[j][4] + ' → ' + cant);
+          return { id: p.editar };
+        }
+        throw new Error('No encontrado (puede que lo hayan borrado).');
+      }
+      var id = Utilities.getUuid ? Utilities.getUuid() : String(Date.now());
+      sh.appendRow([p.mes, String(p.codigoAsesoria), p.nombre || '', p.tipo === TIPO_PLUS ? TIPO_PLUS : TIPO_COMPLEMENTO, cant, p.motivo || '', new Date(), u.persona, id]);
+      log_(u.persona, 'Complemento', p.mes + ' · ' + p.nombre + ' · ' + cant);
+      return { id: id };
+    });
+  },
+
   /** Varios guardados en una sola llamada (más rápido desde el móvil). */
   lote: function (p) {
     var res = [];
