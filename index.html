@@ -547,6 +547,7 @@ b.verde{color:var(--verde)}
 const API_URL = window.API_URL || '';
 
 const DIAS_CORTOS = ['L','M','X','J','V'];
+const tieneViajes = m => !!(m.km && m.km.some(x => x > 0)) || (m.fijos||[]).length > 0;
 const VERSION_REQUERIDA = '2026-11-22';   // versión de Code.gs que necesita esta app
 const DIAS_LARGOS = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
 const MESES_NUM = {Octubre:10,Noviembre:11,Diciembre:12,Enero:1,Febrero:2,Marzo:3,Abril:4,Mayo:5,Junio:6};
@@ -760,7 +761,7 @@ function pintarLista() {
   const total = d.monitores.length, hechos = d.monitores.filter(m => m.estado === 'guardado' || m.estado === 'enviando').length;
   const f = S.filtro.toLowerCase();
   const lista = d.monitores.filter(m => !f || `${m.nombre} ${m.ap1} ${m.ap2}`.toLowerCase().includes(f));
-  const rapidos = bloq(d) ? [] : d.monitores.filter(m => m.estado === 'pendiente');
+  const rapidos = bloq(d) ? [] : d.monitores.filter(m => m.estado === 'pendiente' && !tieneViajes(m));
   const aviso = avisoCierre(d) + avisoPendientes(d);
   main.innerHTML = `
     ${grupos}
@@ -779,7 +780,7 @@ function pintarLista() {
     ${aviso}
     ${rapidos.length > 1 ? `<button class="lote-ok" id="loteOk"><span><b>${rapidos.length} pendientes</b></span><span class="lote-btn">✓ Todos OK, sin incidencias</span></button>` : ''}
     <div class="lista">${lista.map(m => {
-      const rapido = !bloq(d) && (m.estado === 'pendiente' || m.estado === 'enhoja' || m.estado === 'error');
+      const rapido = !bloq(d) && (m.estado === 'pendiente' || m.estado === 'enhoja' || m.estado === 'error') && (!tieneViajes(m) || m.estado === 'enhoja');
       return `${rapido ? `<div class="swipe" data-sw="${esc(m.key)}"><span class="swipe-ok">✓ Todo OK</span>` : ''}<div class="mon" role="button" tabindex="0" data-k="${esc(m.key)}">
         ${avatarMon(m)}
         <div class="info">
@@ -792,7 +793,7 @@ function pintarLista() {
         ${rapido ? `<button class="rapido" data-ok="${esc(m.key)}" aria-label="Todo OK, sin incidencias" title="Todo OK, sin incidencias">✓</button>` : ''}
       </div>${rapido ? '</div>' : ''}`; }).join('') || '<div class="vacio">No hay monitores.</div>'}
     </div>
-    ${rapidos.length && !S._ayudaRapido ? '<p class="meta">Pulsa ✓ (o desliza el monitor a la derecha) si no tiene ninguna incidencia este mes. Si tiene algo que apuntar, toca su nombre.</p>' : ''}`;
+    ${rapidos.length && !S._ayudaRapido ? '<p class="meta">Quien tiene km: toca su nombre y marca los días de viaje. Quien no tiene viajes ni incidencias: pulsa ✓ o deslízalo a la derecha.</p>' : ''}`;
   main.querySelectorAll('.grupo').forEach(b => b.onclick = () => { S.grupo = b.dataset.g; store.set('inc_grupo', S.grupo); S.filtro=''; pintar(); });
   main.querySelectorAll('.mon').forEach(b => {
     b.onclick = e => { if (e.target.closest('.rapido') || b.dataset.swiped) return; abrirFicha(d.monitores.find(m => m.key === b.dataset.k)); };
@@ -806,7 +807,7 @@ function pintarLista() {
   });
   const lo = $('#loteOk');
   if (lo) lo.onclick = () => {
-    if (!confirm(`Se darán por buenos ${rapidos.length} monitores, sin incidencias (con sus días fijos, si los tienen). Podrás cambiar cualquiera después. ¿Continuar?`)) return;
+    if (!confirm(`Se darán por buenos ${rapidos.length} monitores, sin viajes ni incidencias. Podrás cambiar cualquiera después. ¿Continuar?`)) return;
     confirmarSinIncidencias(rapidos);
   };
   const bus = $('#buscar');
@@ -928,7 +929,7 @@ function seleccionInicial(m, dm) {
       cand.slice(0, v).forEach(h => sel.add(h.d));
     });
   } else {
-    hab.forEach(h => { if ((m.fijos.includes(h.wd) || m.datos.conteo[h.wd]) && !fest[h.d]) sel.add(h.d); });
+    // sin nada guardado: calendario vacío; el responsable marca los viajes
   }
   return sel;
 }
@@ -985,13 +986,12 @@ function pintarFicha() {
       ${sinViajes ? `<details class="sinviajes"><summary><h3 style="display:inline">🚗 Viajes</h3> <span class="ayuda">· No tiene km por viaje: no hay viajes que marcar. <u>Marcar igualmente</u></span></summary>` : ''}
       ${sinViajes ? '' : `<h3>🚗 Viajes del mes</h3>`}
       <p class="ayuda">${sinViajes ? 'Solo si este mes ha hecho algún viaje con desplazamiento.' : propuesta
-        ? (m.estado==='enhoja' ? 'Marcado a partir de lo que ya había en la hoja. Revisa y guarda.' : 'Cada día marcado es un viaje que se paga en km. Ya están sus días de viaje: desmarca los que no fue y marca los extra.')
+        ? (m.estado==='enhoja' ? 'Marcado a partir de lo que ya había en la hoja. Revisa y guarda.' : 'Toca cada día que haya hecho viaje: cada día marcado es un viaje que se paga en km. Los recuadros con borde son sus días habituales.')
         : 'Cada día marcado es un viaje que se paga en km. Toca un día para marcarlo o desmarcarlo.'}</p>
       <div class="cal">${celdas}</div>
       <div class="conteo">${DIAS_CORTOS.map((x,i)=>`<div><b>${conteo[i]}</b>${x}${m.km && m.km[i] && conteo[i] ? `<small class="ckm">${String(Math.round(conteo[i]*m.km[i]*10)/10).replace('.',',')} km</small>` : ''}</div>`).join('')}</div>
       ${m.km ? `<div class="kmmes">🚗 Km de viajes este mes: <b>${String(Math.round(conteo.reduce((a,c,i)=>a+c*(m.km[i]||0),0)*10)/10).replace('.',',')} km</b><span> · ${DIAS_CORTOS.filter((x,i)=>m.km[i]).map(x=>x).join(', ')} con desplazamiento</span></div>` : ''}
-      ${sinMarcar && !bloq(dm) ? `<div class="pista">${sinMarcar} día${sinMarcar>1?'s':''} de viaje sin marcar
-          ${(F.v.ausencias||0) !== sinMarcar ? `<button id="usarAus">Poner en ausencias</button>`:''}</div>` : ''}
+
       <div class="leyenda"><span><i style="background:var(--azul)"></i>Viaje</span><span><i style="border:2px solid var(--borde-fijo);background:var(--fondo)"></i>Día de viaje habitual</span><span><i style="background:repeating-linear-gradient(135deg,var(--fondo) 0 3px,var(--linea) 3px 6px)"></i>Festivo</span></div>
       ${sinViajes ? '</details>' : ''}
     </div>

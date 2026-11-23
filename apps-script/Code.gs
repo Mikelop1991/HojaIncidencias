@@ -26,7 +26,7 @@
  * ================================================================ */
 var URL_HOJA_REGISTRO = '';   // basta pegarla UNA vez: queda guardada aunque luego actualices el código
 
-var VERSION_SERVIDOR = '2026-11-22';
+var VERSION_SERVIDOR = '2026-11-23';
 
 var MESES = ['Octubre', 'Noviembre', 'Diciembre', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'];
 var MES_NUM = { Octubre: 10, Noviembre: 11, Diciembre: 12, Enero: 1, Febrero: 2, Marzo: 3, Abril: 4, Mayo: 5, Junio: 6 };
@@ -1021,7 +1021,7 @@ var ACCIONES = {
       var cd = colsDatos_(c), ancho = cd.hasta - cd.desde + 1;
       var rango = sh.getRange(fila, cd.desde + 1, 1, ancho), v = rango.getValues()[0];
       function put(col, x) { v[col - cd.desde] = (x === null || x === undefined || x === '') ? '' : x; }
-      c.dias.forEach(function (col, i) { put(col, conteo[i] > 0 ? conteo[i] : (m.fijos.indexOf(i) >= 0 ? 0 : '')); });
+      c.dias.forEach(function (col, i) { put(col, conteo[i] > 0 ? conteo[i] : ''); });
       put(c.partidos, num_(p.partidos)); put(c.ausencias, num_(p.ausencias)); put(c.sust, num_(p.sust));
       put(c.km, num_(p.km)); put(c.peajes, num_(p.peajes)); put(c.obs, String(p.obs || '').trim());
       rango.setValues([v]);
