@@ -26,7 +26,7 @@
  * ================================================================ */
 var URL_HOJA_REGISTRO = '';   // basta pegarla UNA vez: queda guardada aunque luego actualices el código
 
-var VERSION_SERVIDOR = '2026-11-23';
+var VERSION_SERVIDOR = '2026-11-24';
 
 var MESES = ['Octubre', 'Noviembre', 'Diciembre', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'];
 var MES_NUM = { Octubre: 10, Noviembre: 11, Diciembre: 12, Enero: 1, Febrero: 2, Marzo: 3, Abril: 4, Mayo: 5, Junio: 6 };
@@ -124,14 +124,31 @@ function ajustes_() {
   out.abiertos = lista(out.MESES_ABIERTOS);
   out.cierreDia = parseInt(out.CIERRE_AUTO_DIA, 10); if (isNaN(out.cierreDia)) out.cierreDia = 3;
   // cierre automático: el mes se bloquea el día "cierreDia" del mes siguiente (0 = desactivado)
-  out.fechaCierre = {}; out.cerrados = out.manuales.slice();
+  // fechas puestas a mano por mes (CIERRE_FECHAS = "Noviembre=2026-11-27; ...") mandan sobre la regla automática
+  out.fechasManuales = fechasCierre_(out.CIERRE_FECHAS);
+  out.fechaCierre = {}; out.fechaManual = {}; out.cerrados = out.manuales.slice();
   var hoy = new Date();
   MESES.forEach(function (m) {
-    if (!out.cierreDia) return;
-    var y = MES_NUM[m] >= 9 ? out.TEMPORADA_INICIO : out.TEMPORADA_INICIO + 1;
-    var f = new Date(y, MES_NUM[m], out.cierreDia);           // mes siguiente (índice 0-based = MES_NUM)
-    out.fechaCierre[m] = Utilities.formatDate ? Utilities.formatDate(f, 'Europe/Madrid', 'yyyy-MM-dd') : f.toISOString().slice(0, 10);
+    var f, txt = out.fechasManuales[m];
+    if (txt) { var q = txt.split('-'); f = new Date(+q[0], +q[1] - 1, +q[2]); out.fechaManual[m] = true; }
+    else {
+      if (!out.cierreDia) return;
+      var y = MES_NUM[m] >= 9 ? out.TEMPORADA_INICIO : out.TEMPORADA_INICIO + 1;
+      f = new Date(y, MES_NUM[m], out.cierreDia);           // mes siguiente (índice 0-based = MES_NUM)
+    }
+    out.fechaCierre[m] = txt || fmtFecha_(f);
     if (hoy >= f && out.abiertos.indexOf(norm_(m)) < 0 && out.cerrados.indexOf(norm_(m)) < 0) out.cerrados.push(norm_(m));
+  });
+  return out;
+}
+
+function fmtFecha_(f) { return f.getFullYear() + '-' + ('0' + (f.getMonth() + 1)).slice(-2) + '-' + ('0' + f.getDate()).slice(-2); }
+function fechasCierre_(v) {
+  var out = {};
+  String(v || '').split(';').forEach(function (par) {
+    var kv = par.split('='); if (kv.length < 2) return;
+    var mes = MESES.filter(function (x) { return norm_(x) === norm_(kv[0]); })[0], f = String(kv[1]).trim();
+    if (mes && /^\d{4}-\d{2}-\d{2}$/.test(f)) out[mes] = f;
   });
   return out;
 }
@@ -811,7 +828,7 @@ var ACCIONES = {
       meses: mesesDisponibles_(),
       mesActual: (function () { var d = mesesDisponibles_(); return d.indexOf(mesHoy) >= 0 ? mesHoy : d[d.length - 1]; })(),
       cerrados: MESES.filter(function (m) { return aj.cerrados.indexOf(norm_(m)) >= 0; }),
-      cierreDia: aj.cierreDia, fechaCierre: aj.fechaCierre, version: VERSION_SERVIDOR
+      cierreDia: aj.cierreDia, fechaCierre: aj.fechaCierre, fechaManual: aj.fechaManual, version: VERSION_SERVIDOR
     };
   },
 
@@ -878,6 +895,30 @@ var ACCIONES = {
       log_(u.persona, p.cerrar ? 'Bloquear' : 'Desbloquear', lista.join(', '));
       var nuevo = ajustes_();
       return { cerrados: MESES.filter(function (m) { return nuevo.cerrados.indexOf(norm_(m)) >= 0; }), cierreDia: nuevo.cierreDia, fechaCierre: nuevo.fechaCierre };
+    });
+  },
+
+  /** Fecha de bloqueo de un mes puesta a mano ('' = volver a la regla automática). */
+  fechaCierre: function (p) {
+    var u = usuario_(p.codigo);
+    if (!u.admin) throw new Error('Solo para administración.');
+    if (MESES.indexOf(p.mes) < 0) throw new Error('Mes no válido.');
+    var f = String(p.fecha || '').trim();
+    if (f && !/^\d{4}-\d{2}-\d{2}$/.test(f)) throw new Error('Fecha no válida.');
+    return conBloqueo_(function () {
+      var aj = ajustes_(), fechas = aj.fechasManuales;
+      if (f) fechas[p.mes] = f; else delete fechas[p.mes];
+      setAjuste_('CIERRE_FECHAS', MESES.filter(function (m) { return fechas[m]; }).map(function (m) { return m + '=' + fechas[m]; }).join('; '), 'Fecha de bloqueo de cada mes puesta a mano (manda sobre el cierre automático)');
+      // con una fecha nueva, el mes sigue esa fecha: se quita de "reabiertos" y, si es futura, de "bloqueados a mano"
+      var futura = f && f > fmtFecha_(new Date());
+      var quitar = function (lista) { return lista.filter(function (x) { return x !== norm_(p.mes); }); };
+      var nombres = function (l) { return MESES.filter(function (m) { return l.indexOf(norm_(m)) >= 0; }).join('; '); };
+      setAjuste_('MESES_ABIERTOS', nombres(quitar(aj.abiertos)), 'Meses reabiertos a mano aunque haya pasado su cierre automático');
+      if (!f || futura) setAjuste_('MESES_CERRADOS', nombres(quitar(aj.manuales)), 'Meses bloqueados a mano');
+      limpiarCache_(); invalidarMes_(p.mes);
+      log_(u.persona, 'Fecha de cierre', p.mes + ' → ' + (f || 'automática'));
+      var n = ajustes_();
+      return { cerrados: MESES.filter(function (m) { return n.cerrados.indexOf(norm_(m)) >= 0; }), cierreDia: n.cierreDia, fechaCierre: n.fechaCierre, fechaManual: n.fechaManual };
     });
   },
 

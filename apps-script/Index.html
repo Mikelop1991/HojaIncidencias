@@ -248,6 +248,11 @@ body.conBanner #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 .sinviajes[open] summary{margin-bottom:8px}
 .recordatorio.cierre{border-left-color:var(--c-aus)}
 .cierre-auto{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;font-size:13px;font-weight:700}
+.fcierre{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:13px;font-weight:700}
+.fcierre input{padding:6px 8px;border-radius:9px;border:1.5px solid var(--linea);background:var(--card);color:var(--tinta);font:inherit}
+.fcierre button,.bloqueo .fcierre button{border:0;background:none;box-shadow:none;min-height:0;color:var(--azul);font-weight:700;font-size:12px;cursor:pointer;padding:4px}
+.fcierre small{color:var(--gris);font-weight:600}
+.fcierres{display:grid;gap:4px;margin-top:10px}.fcierres>div{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.fcierres>div>b{min-width:84px;font-size:13px}.fcierres .fcierre{margin-top:0}
 .cierre-auto select{padding:8px 10px;border-radius:10px;border:1.5px solid var(--linea);background:var(--card);color:var(--tinta)}
 #avisoVersion{background:var(--rojo-suave);color:var(--c-aus);font-size:13px;font-weight:700;padding:10px 16px;text-align:center}
 /* ---------- deslizar para confirmar */
@@ -548,7 +553,7 @@ const API_URL = window.API_URL || '';
 
 const DIAS_CORTOS = ['L','M','X','J','V'];
 const tieneViajes = m => !!(m.km && m.km.some(x => x > 0)) || (m.fijos||[]).length > 0;
-const VERSION_REQUERIDA = '2026-11-22';   // versión de Code.gs que necesita esta app
+const VERSION_REQUERIDA = '2026-11-24';   // versión de Code.gs que necesita esta app
 const DIAS_LARGOS = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
 const MESES_NUM = {Octubre:10,Noviembre:11,Diciembre:12,Enero:1,Febrero:2,Marzo:3,Abril:4,Mayo:5,Junio:6};
 
@@ -767,7 +772,7 @@ function pintarLista() {
     ${grupos}
     ${bloq(d) ? `<div class="aviso">🔒 ${esc(d.mes)} está cerrado: puedes consultar pero no modificar.</div>` : ''}
     ${S.user.admin ? `<div class="bloqueo ${d.cerrado?'on':''}">
-        <div><b>${d.cerrado ? '🔒 ' + esc(d.mes) + ' bloqueado' : '🔓 ' + esc(d.mes) + ' abierto'}</b><br><span>${d.cerrado ? 'Los responsables solo pueden consultar. Tú sí puedes editar.' : 'Los responsables pueden apuntar y modificar.' + ((S.user.fechaCierre||{})[d.mes] && S.user.cierreDia ? ' Se bloquea solo el ' + new Date(S.user.fechaCierre[d.mes] + 'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long'}) + '.' : '')}</span></div>
+        <div><b>${d.cerrado ? '🔒 ' + esc(d.mes) + ' bloqueado' : '🔓 ' + esc(d.mes) + ' abierto'}</b><br><span>${d.cerrado ? 'Los responsables solo pueden consultar. Tú sí puedes editar.' : 'Los responsables pueden apuntar y modificar.'}</span>${d.cerrado ? '' : selectorCierre(d.mes)}</div>
         <button id="btnBloq">${d.cerrado ? 'Desbloquear' : 'Bloquear'}</button></div>` : ''}
     <div class="resumen-fila">
     <div class="resumen">
@@ -800,6 +805,7 @@ function pintarLista() {
     b.onkeydown = e => { if (e.key === 'Enter') b.click(); };
   });
   const bb = $('#btnBloq'); if (bb) bb.onclick = () => bloquearMeses([d.mes], !d.cerrado);
+  ligarSelectorCierre(main);
   ligarDeslizar(main, d);
   main.querySelectorAll('.rapido').forEach(b => b.onclick = () => {
     confirmarSinIncidencias([d.monitores.find(m => m.key === b.dataset.ok)]);
@@ -873,6 +879,26 @@ function ligarDeslizar(main, d) {
 
 /* ---------- recordatorios dentro de la app */
 function pendientesDe(d) { return Object.values(d.grupos || {}).flat().filter(m => m.estado === 'pendiente' || m.estado === 'error').length; }
+/** Selector de la fecha de bloqueo de un mes (solo admin). */
+function selectorCierre(mes) {
+  const f = (S.user.fechaCierre || {})[mes] || '', manual = (S.user.fechaManual || {})[mes];
+  return `<label class="fcierre">📅 Se bloquea el <input type="date" data-fc="${esc(mes)}" value="${f}">${manual ? `<button type="button" data-fcx="${esc(mes)}" title="Volver al cierre automático">↺ automático</button>` : '<small>(automático)</small>'}</label>`;
+}
+function ligarSelectorCierre(cont) {
+  const enviar = async (mes, fecha) => {
+    try {
+      const r = await api('fechaCierre', { mes, fecha });
+      Object.assign(S.user, { cerrados:r.cerrados, fechaCierre:r.fechaCierre, fechaManual:r.fechaManual, cierreDia:r.cierreDia });
+      Object.values(S.datos).forEach(d => { if (d) d.cerrado = r.cerrados.includes(d.mes); });
+      guardarCache(); pintarMeses();
+      toast(fecha ? `${mes}: se bloquea el ${new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long'})}` : `${mes}: cierre automático`);
+      S.tab === 'resumen' ? pintarResumen() : pintarLista();
+    } catch (e) { toast(/Acci[oó]n desconocida/.test(e.message) ? 'Actualiza el código de Apps Script' : e.message, true); }
+  };
+  cont.querySelectorAll('[data-fc]').forEach(i => i.onchange = () => i.value && enviar(i.dataset.fc, i.value));
+  cont.querySelectorAll('[data-fcx]').forEach(b => b.onclick = () => enviar(b.dataset.fcx, ''));
+}
+
 /** Aviso de cierre: el día antes (y el mismo día por la mañana) de que el mes se bloquee solo. */
 function avisoCierre(d) {
   const f = (S.user.fechaCierre || {})[d.mes]; if (!f || d.cerrado) return '';
@@ -1235,9 +1261,10 @@ function pintarResumen() {
     <details class="tarjeta noprint recs" ${S._bloqAbierto ? 'open' : ''} id="bloqMeses">
       <summary><span>🔒 Bloqueo de meses</span><span class="${S.user.cerrados.length ? 'pill-pend' : 'al-dia'}">${S.user.cerrados.length ? S.user.cerrados.length + ' bloqueado' + (S.user.cerrados.length>1?'s':'') : 'Todo abierto'}</span></summary>
       <p class="ayuda" style="margin-top:10px">Toca un mes para bloquearlo o desbloquearlo. Bloqueado: los responsables solo pueden consultar (tú sí puedes editar).</p>
-      <div class="cierre-auto"><span>⏱ Cierre automático:</span>
+      <div class="cierre-auto"><span>⏱ Si no pongo fecha, cerrar el:</span>
         <select id="cierreDia">${[0,1,2,3,4,5,6,7,8,10,15].map(n => `<option value="${n}" ${n===(S.user.cierreDia??3)?'selected':''}>${n ? 'día ' + n + ' del mes siguiente' : 'desactivado'}</option>`).join('')}</select></div>
-      <p class="ase-nota" style="margin:6px 0 0">El día antes, los responsables ven el aviso de que se cierra. Si desbloqueas un mes ya cerrado, se queda abierto hasta que lo vuelvas a bloquear.</p>
+      <div class="fcierres">${S.user.meses.filter(m => !S.user.cerrados.includes(m)).map(m => `<div><b>${m}</b>${selectorCierre(m)}</div>`).join('')}</div>
+      <p class="ase-nota" style="margin:6px 0 0">Pon la fecha de bloqueo de cada mes (se bloquea desde las 00:00 de ese día). Si no pones fecha, se usa el cierre automático. Dos días antes, los responsables ven el aviso. Si desbloqueas un mes ya cerrado, se queda abierto hasta que lo vuelvas a bloquear.</p>
       <div class="meses-bloq">${S.user.meses.map(m => `<button data-bq="${m}" class="${S.user.cerrados.includes(m)?'on':''}">${S.user.cerrados.includes(m)?'🔒':'🔓'} ${m}</button>`).join('')}</div>
       <div class="meses-bloq" style="margin-top:10px"><button data-bqall="1">🔒 Bloquear todos</button><button data-bqall="0">🔓 Desbloquear todos</button></div>
     </details>
@@ -1288,6 +1315,7 @@ function pintarResumen() {
   main.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { S.periodo = b.dataset.p; pintarResumen(); });
   const rc = main.querySelector('.recs'); if (rc) rc.ontoggle = () => { S._recsAbierto = rc.open; };
   const bm = $('#bloqMeses'); if (bm) bm.ontoggle = () => { S._bloqAbierto = bm.open; };
+  ligarSelectorCierre(main);
   const cd = $('#cierreDia'); if (cd) cd.onchange = async () => {
     try { const r = await api('cierreAuto', { dia: +cd.value }); Object.assign(S.user, { cierreDia:r.cierreDia, fechaCierre:r.fechaCierre, cerrados:r.cerrados });
       Object.values(S.datos).forEach(d => { if (d) d.cerrado = r.cerrados.includes(d.mes); }); guardarCache(); pintarMeses(); toast(r.cierreDia ? 'Cierre automático: día ' + r.cierreDia : 'Cierre automático desactivado'); pintarResumen(); }
