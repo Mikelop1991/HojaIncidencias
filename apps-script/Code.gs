@@ -26,7 +26,7 @@
  * ================================================================ */
 var URL_HOJA_REGISTRO = '';   // basta pegarla UNA vez: queda guardada aunque luego actualices el código
 
-var VERSION_SERVIDOR = '2026-11-24';
+var VERSION_SERVIDOR = '2026-11-25';
 
 var MESES = ['Octubre', 'Noviembre', 'Diciembre', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'];
 var MES_NUM = { Octubre: 10, Noviembre: 11, Diciembre: 12, Enero: 1, Febrero: 2, Marzo: 3, Abril: 4, Mayo: 5, Junio: 6 };
@@ -756,6 +756,69 @@ function calcularAsesoria_(mes, sinAnterior) {
     totales: tot.map(redondea_), personas: Object.keys(personas).length, complementos: complementos, estados: estados };
 }
 
+// ================================================================ GUARDADO EN BLOQUE
+/** Guarda muchos monitores de una vez: lee cada hoja una sola vez y escribe solo las filas que cambian. */
+function guardarVariosMonitores_(codigo, lista) {
+  var u = usuario_(codigo), aj = ajustes_(), out = new Array(lista.length), ahora = new Date();
+  var porMes = {};
+  lista.forEach(function (p, i) { (porMes[p.mes] = porMes[p.mes] || []).push(i); });
+  var shD = hoja_('_Dias', H_DIAS), fd = filas_(shD), idxD = {}, nuevosD = [], cambiosD = [], logs = [];
+  fd.forEach(function (r, i) { idxD[r[0] + '|' + norm_(r[1]) + '|' + r[2]] = i; });
+
+  Object.keys(porMes).forEach(function (mes) {
+    var ids = porMes[mes];
+    try { comprobarMes_(mes, aj, true, u.admin); }
+    catch (e) { ids.forEach(function (i) { out[i] = { ok: false, error: e.message }; }); return; }
+    var sh = hojaMes_(mes, true), c = columnasMes_(sh), cd = colsDatos_(c), ancho = cd.hasta - cd.desde + 1;
+    var datos = filas_(sh), idx = {};
+    datos.forEach(function (r, i) {
+      if (!r[c.grupo] || !r[c.nombre]) return;
+      var k = norm_(r[c.grupo]) + '#' + claveMonitor_(r[c.nombre], r[c.ap1], r[c.ap2]);
+      if (!(k in idx)) idx[k] = i;
+    });
+    var y = anioDeMes_(mes, aj), mn = MES_NUM[mes], diasMes = new Date(y, mn, 0).getDate(), cambiadas = {};
+    ids.forEach(function (i) {
+      var p = lista[i];
+      try {
+        comprobarGrupo_(u, p.grupo);
+        var fi = idx[norm_(p.grupo) + '#' + p.key];
+        if (fi === undefined) throw new Error('Ese monitor no está en tu grupo este mes.');
+        var dias = uniq_((p.dias || []).map(Number).filter(function (d) { return d >= 1 && d <= diasMes; })).sort(function (a, b) { return a - b; });
+        var conteo = [0, 0, 0, 0, 0];
+        dias.forEach(function (d) { var wd = new Date(y, mn - 1, d).getDay(); if (wd >= 1 && wd <= 5) conteo[wd - 1]++; });
+        var r = datos[fi];
+        function put(col, x) { r[col] = (x === null || x === undefined || x === '') ? '' : x; }
+        c.dias.forEach(function (col, k) { put(col, conteo[k] > 0 ? conteo[k] : ''); });
+        put(c.partidos, num_(p.partidos)); put(c.ausencias, num_(p.ausencias)); put(c.sust, num_(p.sust));
+        put(c.km, num_(p.km)); put(c.peajes, num_(p.peajes)); put(c.obs, String(p.obs || '').trim());
+        cambiadas[fi] = true;
+        var kd = mes + '|' + norm_(p.grupo) + '|' + p.key, filaD = [mes, p.grupo, p.key, dias.join(','), ahora, u.persona];
+        if (kd in idxD) cambiosD.push({ fila: idxD[kd] + 2, v: filaD.slice(3) });
+        else { idxD[kd] = -1; nuevosD.push(filaD); }
+        var res = [], nm = r[c.nombre] + ' ' + (r[c.ap1] || '') + ' ' + (r[c.ap2] || '');
+        if (num_(p.ausencias)) res.push(num_(p.ausencias) + ' aus.'); if (num_(p.sust)) res.push(num_(p.sust) + ' sust.');
+        if (num_(p.partidos)) res.push(num_(p.partidos) + ' liga'); if (num_(p.km)) res.push(num_(p.km) + ' km'); if (num_(p.peajes)) res.push(num_(p.peajes) + ' € peajes');
+        logs.push([ahora, u.persona, 'Guardar monitor', mes + ' · ' + p.grupo + ' · ' + nm.trim() + ' · ' + conteo.reduce(function (a, b) { return a + b; }, 0) + ' viajes' + (res.length ? ' · ' + res.join(', ') : ' · sin incidencias')]);
+        out[i] = { ok: true, data: { ok: true, conteo: conteo, actualizado: ahora.toISOString() } };
+      } catch (e) { out[i] = { ok: false, error: e.message }; }
+    });
+    // escribir por tramos de filas seguidas (solo columnas de datos)
+    var filas = Object.keys(cambiadas).map(Number).sort(function (a, b) { return a - b; });
+    for (var a = 0; a < filas.length;) {
+      var b = a; while (b + 1 < filas.length && filas[b + 1] === filas[b] + 1) b++;
+      var bloque = [];
+      for (var k = a; k <= b; k++) bloque.push(datos[filas[k]].slice(cd.desde, cd.hasta + 1));
+      sh.getRange(filas[a] + 2, cd.desde + 1, bloque.length, ancho).setValues(bloque);
+      a = b + 1;
+    }
+    invalidarMes_(mes);
+  });
+  cambiosD.forEach(function (x) { shD.getRange(x.fila, 4, 1, 3).setValues([x.v]); });
+  if (nuevosD.length) shD.getRange(shD.getLastRow() + 1, 1, nuevosD.length, 6).setValues(nuevosD);
+  if (logs.length) try { var shR = hoja_('_Registro', H_REGISTRO); shR.getRange(shR.getLastRow() + 1, 1, logs.length, 4).setValues(logs); } catch (e) { }
+  return out;
+}
+
 // ================================================================ DÍAS FIJOS DE VIAJE
 /** Marca en _Monitores como "días fijos" los días en que cada monitor tiene km por viaje (_Maestro).
  *  Quien no tiene km no tiene viajes que marcar. */
@@ -806,7 +869,7 @@ var _bloqueado = false;
 function conBloqueo_(fn) {
   if (_bloqueado) return fn();
   var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  if (!lock.tryLock(25000)) throw new Error('OCUPADO: El Excel está ocupado guardando otros cambios. Se reintentará solo en unos segundos.');
   _bloqueado = true;
   try { return fn(); } finally { _bloqueado = false; lock.releaseLock(); }
 }
@@ -1023,13 +1086,21 @@ var ACCIONES = {
 
   /** Varios guardados en una sola llamada (más rápido desde el móvil). */
   lote: function (p) {
-    var res = [];
+    var items = p.items || [], res = new Array(items.length);
     conBloqueo_(function () {
-      (p.items || []).forEach(function (it) {
-        if (it.action !== 'guardarMonitor' && it.action !== 'guardarMisDatos') { res.push({ ok: false, error: 'Acción no permitida' }); return; }
+      // los monitores se guardan todos juntos (una lectura y pocas escrituras); el resto, uno a uno
+      var mon = [];
+      items.forEach(function (it, i) { if (it.action === 'guardarMonitor') mon.push(i); });
+      if (mon.length) {
+        var r = guardarVariosMonitores_(p.codigo, mon.map(function (i) { return items[i].params || {}; }));
+        mon.forEach(function (i, j) { res[i] = r[j]; });
+      }
+      items.forEach(function (it, i) {
+        if (res[i]) return;
+        if (it.action !== 'guardarMisDatos') { res[i] = { ok: false, error: 'Acción no permitida' }; return; }
         var q = it.params || {}; q.codigo = p.codigo;
-        try { res.push({ ok: true, data: ACCIONES[it.action](q) }); }
-        catch (e) { res.push({ ok: false, error: e && e.message ? e.message : String(e) }); }
+        try { res[i] = { ok: true, data: ACCIONES[it.action](q) }; }
+        catch (e) { res[i] = { ok: false, error: e && e.message ? e.message : String(e) }; }
       });
     });
     return res;

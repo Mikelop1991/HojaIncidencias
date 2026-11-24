@@ -553,7 +553,7 @@ const API_URL = window.API_URL || '';
 
 const DIAS_CORTOS = ['L','M','X','J','V'];
 const tieneViajes = m => !!(m.km && m.km.some(x => x > 0)) || (m.fijos||[]).length > 0;
-const VERSION_REQUERIDA = '2026-11-24';   // versión de Code.gs que necesita esta app
+const VERSION_REQUERIDA = '2026-11-25';   // versión de Code.gs que necesita esta app
 const DIAS_LARGOS = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
 const MESES_NUM = {Octubre:10,Noviembre:11,Diciembre:12,Enero:1,Febrero:2,Marzo:3,Abril:4,Mayo:5,Junio:6};
 
@@ -575,7 +575,7 @@ function guardarCola(){ if (S.codigo) store.setJ('inc_cola_'+S.codigo, S.cola); 
 /* ---------- llamada a la API: google.script.run si estamos dentro de Apps Script, fetch si no */
 function api(action, params = {}) {
   const body = Object.assign({ action, codigo: S.codigo }, params);
-  const fallo = (m, red) => { const e = new Error(m); e.red = !!red; return e; };
+  const fallo = (m, red) => { m = String(m || ''); const e = new Error(m.replace(/^OCUPADO: /, '')); e.red = !!red; e.ocupado = /^OCUPADO/.test(m); return e; };
   if (window.google && google.script && google.script.run) {
     return new Promise((ok, ko) => google.script.run
       .withSuccessHandler(r => { const j = JSON.parse(r); j.ok ? ok(j.data) : ko(fallo(j.error)); })
@@ -584,8 +584,10 @@ function api(action, params = {}) {
   }
   if (window.API_MOCK) return window.API_MOCK(body);
   if (!API_URL) return Promise.reject(fallo('La app aún no está conectada a la hoja (falta la URL en config.js).'));
-  return fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body) })
-    .then(r => r.json(), () => { throw fallo('Sin conexión. Se enviará cuando vuelva la cobertura.', true); })
+  // si Google no responde en 75 s se corta y se reintenta (antes se podía quedar «Enviando…» para siempre)
+  const ctl = window.AbortController ? new AbortController() : null, t = ctl && setTimeout(() => ctl.abort(), 75000);
+  return fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body), signal: ctl && ctl.signal })
+    .then(r => { clearTimeout(t); return r.json(); }, () => { clearTimeout(t); throw fallo('Sin conexión o el Excel tarda en responder. Se reintentará solo.', true); })
     .then(j => { if (!j.ok) throw fallo(j.error); return j.data; });
 }
 
@@ -1102,13 +1104,14 @@ async function enviarCola() {
   enviando = true;
   try {
     while (S.cola.length) {
-      const paquete = S.cola.slice(0, 40);              // todo lo pendiente en UNA llamada
+      const paquete = S.cola.slice(0, 30);              // hasta 30 cambios en UNA llamada
       let res;
       try {
         if (S.sinLote) throw Object.assign(new Error('Acción desconocida'), {legacy:true});
         res = await api('lote', { items: paquete.map(x => ({ action:x.action, params:x.params })) });
       } catch (e) {
-        if (e.red) { marcarSinRed(true); break; }
+        if (e.red) { marcarSinRed(true); setTimeout(enviarCola, 8000); break; }
+        if (e.ocupado || /tiempo de espera|timed? ?out|bloqueo/i.test(e.message)) { setTimeout(enviarCola, 4000 + Math.random() * 4000); break; }   // Excel ocupado: reintento sin molestar
         if (!/Acci[oó]n desconocida/.test(e.message)) { toast(e.message, true); break; }
         S.sinLote = true;                                  // servidor antiguo: de uno en uno
         res = [];
